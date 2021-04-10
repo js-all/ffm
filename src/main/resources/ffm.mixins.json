@@ -1,0 +1,18 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "dev.viandox.ffm.mixin",
+  "compatibilityLevel": "JAVA_8",
+  "mixins": [
+  ],
+  "client": [
+    "MixinTextRenderer",
+    "MixinScreen",
+    "MixinHandledScreen",
+    "MixinInventoryScreen",
+    "MixinGenericContainerScreen"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
