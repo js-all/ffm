@@ -18,6 +18,7 @@ public class MixinInventoryScreen {
             target = "Lnet/minecraft/client/gui/screen/ingame/InventoryScreen;drawTexture(Lnet/minecraft/client/util/math/MatrixStack;IIIIII)V"
         )
     )
+    // enable blending on inventory background
     void redirectDrawBackground(InventoryScreen d, MatrixStack matrices, int x, int y, int u, int v, int width, int height) {
         FFMGraphicsHelper.drawBlendingTexture(matrices, x, y, u, v, width, height, 0);
     }

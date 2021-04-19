@@ -17,6 +17,7 @@ public class MixinGenericContainerScreen {
             target = "Lnet/minecraft/client/gui/screen/ingame/GenericContainerScreen;drawTexture(Lnet/minecraft/client/util/math/MatrixStack;IIIIII)V"
         )
     )
+    /** enable blending on chest background */
     void redirectDrawBackground(GenericContainerScreen d, MatrixStack matrices, int x, int y, int u, int v, int width, int height) {
         FFMGraphicsHelper.drawBlendingTexture(matrices, x, y, u, v, width, height, 0);
     }

@@ -34,6 +34,7 @@ public class MixinHandledScreen {
             target = "Lnet/minecraft/client/gui/screen/ingame/HandledScreen;renderTooltip(Lnet/minecraft/client/util/math/MatrixStack;Lnet/minecraft/item/ItemStack;II)V"
         )
     )
+    // change some things to have the tooltip folowing (with interpolation) the selected item instead of the cursor
     void redirectRenderTooltip(HandledScreen<?> hs, MatrixStack matrices, ItemStack stack, int x, int y) {
 
         try {
