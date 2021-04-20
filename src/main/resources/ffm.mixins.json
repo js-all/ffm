@@ -10,7 +10,9 @@
     "MixinScreen",
     "MixinHandledScreen",
     "MixinInventoryScreen",
-    "MixinGenericContainerScreen"
+    "MixinGenericContainerScreen",
+    "MixinTexturedButtonWidget",
+    "MixinAbstractIventoryScreen"
   ],
   "injectors": {
     "defaultRequire": 1
