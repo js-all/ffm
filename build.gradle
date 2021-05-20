@@ -19,7 +19,16 @@ repositories {
 }
 
 runClient {
-	args '--username=viandox42'
+	//PAIN PAIN PAIN PAAAAAAAIIIIIINNNNN
+
+	// "bash ./getSession.sh".execute()
+	// File cre = new File('run/credentials')
+	// def lines = cre.readLines()
+	// args sprintf('--username %s --uuid %s --accessToken %s --userType mojang', lines[3], lines[2], lines[1])
+	// args sprintf('--username=%s --accessToken=%s --userType=mojang', lines[3], lines[1])
+	// args sprintf('--username=%s', lines[4]), sprintf('--accessToken=%s', lines[2]), sprintf('--uuid=%s', lines[3]), '--userType=mojang'
+	// args sprintf('--uuid=%s', lines[3]), sprintf('--accessToken %s', lines[2]), 'userType=mojang'
+	// args '--username=test', '--userType=mojang'
 }
 
 dependencies {

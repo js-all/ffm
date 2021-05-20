@@ -11,7 +11,7 @@ import net.minecraft.client.gui.screen.ingame.AbstractInventoryScreen;
 import net.minecraft.client.util.math.MatrixStack;
 
 @Mixin(AbstractInventoryScreen.class)
-public class MixinAbstractIventoryScreen {
+public class MixinAbstractInventoryScreen {
     @Redirect(
         method = "drawStatusEffectBackgrounds",
         at = @At(

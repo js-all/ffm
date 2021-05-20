@@ -12,7 +12,9 @@
     "MixinInventoryScreen",
     "MixinGenericContainerScreen",
     "MixinTexturedButtonWidget",
-    "MixinAbstractIventoryScreen"
+    "MixinAbstractInventoryScreen",
+    "MixinClientPlayNetworkHandler",
+    "MixinInGameHud"
   ],
   "injectors": {
     "defaultRequire": 1

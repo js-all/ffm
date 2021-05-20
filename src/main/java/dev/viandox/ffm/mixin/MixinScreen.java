@@ -135,16 +135,16 @@ public class MixinScreen {
         bufferBuilder.begin(7, VertexFormats.POSITION_TEXTURE_COLOR);
 
         // if you don't understand this code (why l + n + 6 - b + h - v + f or the UV coordinates for example) don't worry
-        // i don't either, just don't think about it, it mostly works, and thats all that matters.
+        // i don't either, just don't think about it, it mostly works, and that's all that matters.
 
-        // the tooltip is rendered with 8 quads (font liguature recomended, eg. FiraCode):
+        // the tooltip is rendered with 8 quads (font ligature recommended, eg. FiraCode):
         //
         //                  mid piece between corners
         // top left corner ─┐           │         ┌─ top right corner
         //                 ╭──┬─────────────────┬──╮ ─┐
         //   bottom part __├──┴─────────────────┴──┤  │ <- header
         //     of header   ├───────────────────────┤ ─┤
-        //                 │                       │  │
+        //                 │                       │  │                   ( the rounded corners are a texture )
         //                 │                       │  │
         //  most of body ──│                       │  │ <- body
         //                 │                       │  │
@@ -154,9 +154,9 @@ public class MixinScreen {
         //           mid bottom piece ─┘          └─ bottom right corner
 
         // i know this looks like a lot, but keep in mind that the original minecraft tooltip
-        // uses 36 of those bufferBuilder.vertex calls.                             │ 0.9F values here are used 
-        // (there are 32 here)                                                      │ to render solid color while
-        // top left corner                                                          ↓ still having the texture bound
+        // uses 36 of those bufferBuilder.vertex calls.                                 ┌ 0.9F values here are used
+        // (there are 32 here)                                                          │ to render solid color while
+        // top left corner                                                              ↓ still having the texture bound
         bufferBuilder.vertex((  k + b  ), (      l - b + v + f      ), 400).texture(1.0F, 0.0F).color(cr, cg, cb, ca).next();
         bufferBuilder.vertex((  k - b  ), (      l - b + v + f      ), 400).texture(0.0F, 0.0F).color(cr, cg, cb, ca).next();
         bufferBuilder.vertex((  k - b  ), (      l + b + v + f      ), 400).texture(0.0F, 1.0F).color(cr, cg, cb, ca).next();

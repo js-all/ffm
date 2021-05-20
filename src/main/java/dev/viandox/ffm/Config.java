@@ -1,5 +1,9 @@
 package dev.viandox.ffm;
 
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
+import java.time.temporal.TemporalUnit;
+
 public class Config {
     private Config() {}
     /**
@@ -24,4 +28,6 @@ public class Config {
     public static float[] ColorTristimulus = ColorConverter.CIE10_D65;
     /** revert to the (almost) original tooltip when single lined */
     public static boolean invertedSingleLineToolTip = false;
+    /** the minimum delay between two scrapping of the player list, minimum because the scrapping is attempted every update, and dropped if under the delay */
+    public static Duration minDelayBetweenPlayerListScrapping = Duration.of(10, ChronoUnit.SECONDS);
 }
