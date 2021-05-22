@@ -49,14 +49,23 @@ public abstract class MixinInGameHud {
         if(!this.client.options.hudHidden) {
             if(!PlayerListScrapper.commissions.isEmpty()) {
                 TextRenderer textRenderer = this.getFontRenderer();
-                //OrderedText.styledString("test", Style.EMPTY.withFont())
-                textRenderer.draw(matrices, Text.of("commissions:"), 10.0f, 10.0f, 0xffff0000);
-                float i = 10f;
+                float ofx = 30f;
+                float ofy = 30f;
+                float df = 10f;
+                float m = 10f;
+                float w = textRenderer.getWidth("commissions: ");
+                for(Map.Entry<String, String> entry : PlayerListScrapper.commissions.entrySet()) {
+                    w = Math.max(w, textRenderer.getWidth(entry.getKey() + entry.getValue()));
+                }
+                FFMGraphicsHelper.drawRoundedRect(client, ofx - m, ofy - m, ofx + w + m, ofy + df * PlayerListScrapper.commissions.size() + m, 0, 128, 0, 0, 0, m);
+
+                textRenderer.draw(matrices, Text.of("commissions:"), ofx, ofy, 0xffff0000);
+                float i = ofy + df;
                 for (Map.Entry<String, String> entry : PlayerListScrapper.commissions.entrySet()) {
                     String k = entry.getKey();
                     String v = entry.getValue();
-                    textRenderer.draw(matrices, Text.of(String.format("%s: %s", k, v)), 20.0f, 10.0f + i, 0xffffaa00);
-                    i += 10f;
+                    textRenderer.draw(matrices, Text.of(String.format("%s: %s", k, v)), ofx, i, 0xffffaa00);
+                    i += df;
                 }
             }
         }

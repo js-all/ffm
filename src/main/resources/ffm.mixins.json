@@ -14,8 +14,7 @@
     "MixinTexturedButtonWidget",
     "MixinAbstractInventoryScreen",
     "MixinClientPlayNetworkHandler",
-    "MixinInGameHud",
-    "MixinTtfGlyph"
+    "MixinInGameHud"
   ],
   "injectors": {
     "defaultRequire": 1

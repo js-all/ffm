@@ -2,11 +2,14 @@ package dev.viandox.ffm;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.BufferRenderer;
 import net.minecraft.client.render.Tessellator;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.util.Identifier;
+import net.minecraft.util.math.Matrix3f;
 import net.minecraft.util.math.Matrix4f;
 
 public class FFMGraphicsHelper {
@@ -24,8 +27,6 @@ public class FFMGraphicsHelper {
     }
     /**
     * Draws a textured rectangle from a region in a 256x256 texture.
-    * 
-    * <p>The Z coordinate of the rectangle is {@link #zOffset}.
     * 
     * <p>The width and height of the region are the same as
     * the dimensions of the rectangle.
@@ -104,5 +105,74 @@ public class FFMGraphicsHelper {
 
     public static void drawBlendingTexture(MatrixStack matrices, int x0, int y0, int x1, int y1, int z, int regionWidth, int regionHeight, float u, float v, int textureWidth, int textureHeight) {
         drawBlendingTexturedQuad(matrices.peek().getModel(), x0, y0, x1, y1, z, (u + 0.0F) / (float)textureWidth, (u + (float)regionWidth) / (float)textureWidth, (v + 0.0F) / (float)textureHeight, (v + (float)regionHeight) / (float)textureHeight);
+    }
+
+    public static void drawRoundedRect(MinecraftClient client, float x0, float y0, float x1, float y1, float z, int a, int r, int g, int b, float cs) {
+        // the rectangle is rendered this way, from top to bottom, from left to right
+        //   ╭─────┬─────────────────┬─────╮
+        //   │  1  │        2        │  3  │
+        //   ├─────┴─────────────────┴─────┤
+        //   │                             │
+        //   │                             │
+        //   │                             │
+        //   │              4              │
+        //   │                             │
+        //   │                             │
+        //   │                             │
+        //   ├─────┬─────────────────┬─────┤
+        //   │  5  │        6        │  7  │
+        //   ╰─────┴─────────────────┴─────╯
+
+        // bind rounded corner texture
+        client.getTextureManager().bindTexture(new Identifier("ffm", "corner.png"));
+
+        Tessellator tessellator = Tessellator.getInstance();
+        BufferBuilder bufferBuilder = tessellator.getBuffer();
+        bufferBuilder.begin(7, VertexFormats.POSITION_TEXTURE_COLOR);
+        float c = cs;
+        // top left corner
+        bufferBuilder.vertex(x0 + c, y0 + 0, z).texture(1.0F, 0.0F).color(r, g, b, a).next();
+        bufferBuilder.vertex(x0 + 0, y0 + 0, z).texture(0.0F, 0.0F).color(r, g, b, a).next();
+        bufferBuilder.vertex(x0 + 0, y0 + c, z).texture(0.0F, 1.0F).color(r, g, b, a).next();
+        bufferBuilder.vertex(x0 + c, y0 + c, z).texture(1.0F, 1.0F).color(r, g, b, a).next();
+        // top middle bar
+        bufferBuilder.vertex(x1 - c, y0 + 0, z).texture(0.9F, 0.9F).color(r, g, b, a).next();
+        bufferBuilder.vertex(x0 + c, y0 + 0, z).texture(1.0F, 0.9F).color(r, g, b, a).next();
+        bufferBuilder.vertex(x0 + c, y0 + c, z).texture(1.0F, 1.0F).color(r, g, b, a).next();
+        bufferBuilder.vertex(x1 - c, y0 + c, z).texture(0.9F, 1.0F).color(r, g, b, a).next();
+        // top right corner
+        bufferBuilder.vertex(x1 + 0, y0 + 0, z).texture(0.0F, 0.0F).color(r, g, b, a).next();
+        bufferBuilder.vertex(x1 - c, y0 + 0, z).texture(1.0F, 0.0F).color(r, g, b, a).next();
+        bufferBuilder.vertex(x1 - c, y0 + c, z).texture(1.0F, 1.0F).color(r, g, b, a).next();
+        bufferBuilder.vertex(x1 + 0, y0 + c, z).texture(0.0F, 1.0F).color(r, g, b, a).next();
+        /// most of body
+        bufferBuilder.vertex(x1 + 0, y0 + c, z).texture(0.9F, 0.9F).color(r, g, b, a).next();
+        bufferBuilder.vertex(x0 + 0, y0 + c, z).texture(1.0F, 0.9F).color(r, g, b, a).next();
+        bufferBuilder.vertex(x0 + 0, y1 - c, z).texture(1.0F, 1.0F).color(r, g, b, a).next();
+        bufferBuilder.vertex(x1 - 0, y1 - c, z).texture(0.9F, 1.0F).color(r, g, b, a).next();
+        // bottom left corner
+        bufferBuilder.vertex(x0 + c, y1 - c, z).texture(1.0F, 1.0F).color(r, g, b, a).next();
+        bufferBuilder.vertex(x0 + 0, y1 - c, z).texture(0.0F, 1.0F).color(r, g, b, a).next();
+        bufferBuilder.vertex(x0 + 0, y1 + 0, z).texture(0.0F, 0.0F).color(r, g, b, a).next();
+        bufferBuilder.vertex(x0 + c, y1 + 0, z).texture(1.0F, 0.0F).color(r, g, b, a).next();
+        // bottom middle bar
+        bufferBuilder.vertex(x1 - c, y1 - c, z).texture(1.0F, 1.0F).color(r, g, b, a).next();
+        bufferBuilder.vertex(x0 + c, y1 - c, z).texture(0.9F, 1.0F).color(r, g, b, a).next();
+        bufferBuilder.vertex(x0 + c, y1 + 0, z).texture(0.9F, 0.9F).color(r, g, b, a).next();
+        bufferBuilder.vertex(x1 - c, y1 + 0, z).texture(1.0F, 0.9F).color(r, g, b, a).next();
+        // bottom right corner
+        bufferBuilder.vertex(x1 + 0, y1 - c, z).texture(0.0F, 1.0F).color(r, g, b, a).next();
+        bufferBuilder.vertex(x1 - c, y1 - c, z).texture(1.0F, 1.0F).color(r, g, b, a).next();
+        bufferBuilder.vertex(x1 - c, y1 + 0, z).texture(1.0F, 0.0F).color(r, g, b, a).next();
+        bufferBuilder.vertex(x1 + 0, y1 + 0, z).texture(0.0F, 0.0F).color(r, g, b, a).next();
+
+
+        RenderSystem.enableDepthTest();
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+        RenderSystem.shadeModel(7425);
+        tessellator.draw();
+        RenderSystem.shadeModel(7424);
+        RenderSystem.disableBlend();
     }
 }
