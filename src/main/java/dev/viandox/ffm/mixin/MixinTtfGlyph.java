@@ -21,7 +21,7 @@ public class MixinTtfGlyph implements ITtfGlyph {
     @Mutable
     private int height;
 
-    private static final int fac = 10;
+    private static final int fac = 1;
 
     @Inject(
             method = "<init>(Lnet/minecraft/client/font/TrueTypeFont;IIIIFFILorg/spongepowered/asm/mixin/injection/callback/CallbackInfo;)V",
@@ -32,22 +32,22 @@ public class MixinTtfGlyph implements ITtfGlyph {
         this.height *= fac;
     }
 
-    @Inject(
-            method = "upload",
-            at = @At("HEAD")
-    )
-    public void log(CallbackInfo ci) {
-        System.out.println(this.width);
-    }
+//    @Inject(
+//            method = "upload",
+//            at = @At("HEAD")
+//    )
+//    public void log(CallbackInfo ci) {
+//        System.out.println(this.width);
+//    }
 
     @Redirect(
             method = "upload",
             at = @At(
                     value = "INVOKE",
-                    target = "Lnet/minecraft/client/texture/NativeImage;makeGlyphBitmapSubpixel(Lorg/lwjgl/stb/STBTTFontInfo;IIIFFFFII)V"
+                    target = "Lnet/minecraft/client/texture/NativeImage;makeGlyphBitmapSubpixel(Lorg/lwjgl/stb/STBTTFontinfo;IIIFFFFII)V"
             )
     )
-    public void RedirectMakeGlyphBitmapSubpixel(NativeImage img,STBTTFontinfo fontInfo, int glyphIndex, int width, int height, float scaleX, float scaleY, float shiftX, float shiftY, int startX, int startY) {
+    public void RedirectMakeGlyphBitmapSubpixel(NativeImage img, STBTTFontinfo fontInfo, int glyphIndex, int width, int height, float scaleX, float scaleY, float shiftX, float shiftY, int startX, int startY) {
         img.makeGlyphBitmapSubpixel(fontInfo, glyphIndex, width, height, scaleX * fac, scaleY * fac, shiftX, shiftY, startX, startY);
     }
 }
