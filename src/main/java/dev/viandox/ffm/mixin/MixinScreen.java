@@ -73,7 +73,7 @@ public class MixinScreen {
             color = Config.ToolTipDefaultColor;
         }
         // get the alpha, will be used in the background color
-        int alp = (int)(Config.ToolTipBodyOpactity * 255);
+        int alp = (int)(Config.ToolTipBodyOpacity * 255);
         
         // c[rgba] each component of the header color
         int cr = ((color >> 16) & 0xff);

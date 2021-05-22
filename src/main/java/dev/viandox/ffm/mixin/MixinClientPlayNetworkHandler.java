@@ -45,7 +45,7 @@ public class MixinClientPlayNetworkHandler {
         lastRead = currentRead;
 
         List<PlayerListEntry> playerList = PlayerListScrapper.ENTRY_ORDERING.sortedCopy(this.playerListEntries.values());
-        // extract only the displayed name and remove duplicated while keeping the order
+        // extract only the displayed name and remove duplicates while keeping the order
         List<String> nameList = new ArrayList<>(new LinkedHashSet<>(
                 playerList.stream().map((v) -> getPlayerName(v).getString()).collect(Collectors.toList())
         ));
