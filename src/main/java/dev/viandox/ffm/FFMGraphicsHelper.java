@@ -1,13 +1,16 @@
 package dev.viandox.ffm;
 
+import com.ibm.icu.text.ArabicShaping;
+import com.ibm.icu.text.ArabicShapingException;
+import com.ibm.icu.text.Bidi;
 import com.mojang.blaze3d.systems.RenderSystem;
 
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.render.BufferBuilder;
-import net.minecraft.client.render.BufferRenderer;
-import net.minecraft.client.render.Tessellator;
-import net.minecraft.client.render.VertexFormats;
+import net.minecraft.client.font.TextRenderer;
+import net.minecraft.client.render.*;
 import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.text.OrderedText;
+import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.Matrix3f;
 import net.minecraft.util.math.Matrix4f;
@@ -107,6 +110,15 @@ public class FFMGraphicsHelper {
         drawBlendingTexturedQuad(matrices.peek().getModel(), x0, y0, x1, y1, z, (u + 0.0F) / (float)textureWidth, (u + (float)regionWidth) / (float)textureWidth, (v + 0.0F) / (float)textureHeight, (v + (float)regionHeight) / (float)textureHeight);
     }
 
+
+    public static void drawRoundedRect(MinecraftClient client, float x0, float y0, float x1, float y1, float z, int color, float cs) {
+        int a = color >> 24 & 0xff;
+        int r = color >> 16 & 0xff;
+        int g = color >> 8  & 0xff;
+        int b = color >> 0  & 0xff;
+        drawRoundedRect(client, x0, y0, x1, y1, z, a, r, g, b, cs);
+    }
+
     public static void drawRoundedRect(MinecraftClient client, float x0, float y0, float x1, float y1, float z, int a, int r, int g, int b, float cs) {
         // the rectangle is rendered this way, from top to bottom, from left to right
         //   ╭─────┬─────────────────┬─────╮
@@ -174,5 +186,14 @@ public class FFMGraphicsHelper {
         tessellator.draw();
         RenderSystem.shadeModel(7424);
         RenderSystem.disableBlend();
+    }
+
+    public static void drawOutlinedText(TextRenderer textRenderer, MatrixStack matrices, Text txt, float x, float y, int color, int outlineColor) {
+        textRenderer.draw(matrices, txt, x + 0, y - 1, outlineColor);
+        textRenderer.draw(matrices, txt, x - 1, y + 0, outlineColor);
+        textRenderer.draw(matrices, txt, x + 1, y + 0, outlineColor);
+        textRenderer.draw(matrices, txt, x + 0, y + 1, outlineColor);
+
+        textRenderer.draw(matrices, txt, x, y, color);
     }
 }

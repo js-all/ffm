@@ -29,5 +29,6 @@ public class Config {
     /** revert to the (almost) original tooltip when single lined */
     public static boolean invertedSingleLineToolTip = false;
     /** the minimum delay between two scrapping of the player list, minimum because the scrapping is attempted every update, and dropped if under the delay */
-    public static Duration minDelayBetweenPlayerListScrapping = Duration.of(5, ChronoUnit.SECONDS);
+    public static Duration minDelayBetweenPlayerListScrapping = Duration.of(1, ChronoUnit.SECONDS);
+    public static boolean hideArmorBar = true;
 }
