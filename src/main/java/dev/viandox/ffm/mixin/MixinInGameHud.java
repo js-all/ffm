@@ -22,6 +22,7 @@ import net.minecraft.text.TextColor;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Matrix4f;
+import net.minecraft.util.registry.Registry;
 import org.apache.http.impl.conn.SystemDefaultRoutePlanner;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -227,10 +228,12 @@ public abstract class MixinInGameHud {
     public void renderDungeonMap(MatrixStack matrices) {
         VertexConsumerProvider vertexConsumers = this.client.getBufferBuilders().getEntityVertexConsumers();
 
-        ItemStack mapSlot = this.client.player.inventory.main.get(8);
-        Item.Settings settings = new Item.Settings();
+        ItemStack stack = this.client.player.inventory.main.get(8);
 
-        if(mapSlot.isEmpty() || mapSlot.getItem().equals(new Item()))
+        // skip if no map in last hotbar slot
+        if(stack.isEmpty() || stack.getItem() != Registry.ITEM.get(new Identifier("minecraft:filled_map"))) {
+            return;
+        }
 
         matrices.multiply(Vector3f.POSITIVE_Y.getDegreesQuaternion(180.0F));
         matrices.multiply(Vector3f.POSITIVE_Z.getDegreesQuaternion(180.0F));
@@ -240,10 +243,10 @@ public abstract class MixinInGameHud {
         MapState mapState = FilledMapItem.getOrCreateMapState(stack, this.client.world);
         VertexConsumer vertexConsumer = vertexConsumers.getBuffer(mapState == null ? MAP_BACKGROUND : MAP_BACKGROUND_CHECKERBOARD);
         Matrix4f matrix4f = matrices.peek().getModel();
-        vertexConsumer.vertex(matrix4f, -7.0F, 135.0F, 0.0F).color(255, 255, 255, 255).texture(0.0F, 1.0F).next();
-        vertexConsumer.vertex(matrix4f, 135.0F, 135.0F, 0.0F).color(255, 255, 255, 255).texture(1.0F, 1.0F).next();
-        vertexConsumer.vertex(matrix4f, 135.0F, -7.0F, 0.0F).color(255, 255, 255, 255).texture(1.0F, 0.0F).next();
-        vertexConsumer.vertex(matrix4f, -7.0F, -7.0F, 0.0F).color(255, 255, 255, 255).texture(0.0F, 0.0F).next();
+        vertexConsumer.vertex(matrix4f, -7.0F, 135.0F, 0.0F).color(255, 255, 255, 255).texture(0.0F, 1.0F).light(1).next();
+        vertexConsumer.vertex(matrix4f, 135.0F, 135.0F, 0.0F).color(255, 255, 255, 255).texture(1.0F, 1.0F).light(1).next();
+        vertexConsumer.vertex(matrix4f, 135.0F, -7.0F, 0.0F).color(255, 255, 255, 255).texture(1.0F, 0.0F).light(1).next();
+        vertexConsumer.vertex(matrix4f, -7.0F, -7.0F, 0.0F).color(255, 255, 255, 255).texture(0.0F, 0.0F).light(1).next();
         if (mapState != null) {
             this.client.gameRenderer.getMapRenderer().draw(matrices, vertexConsumers, mapState, false, 255);
         }
