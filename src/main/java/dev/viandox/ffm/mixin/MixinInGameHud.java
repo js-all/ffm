@@ -1,12 +1,11 @@
 package dev.viandox.ffm.mixin;
 
+import com.mojang.blaze3d.systems.RenderSystem;
 import dev.viandox.ffm.*;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.hud.InGameHud;
-import net.minecraft.client.render.RenderLayer;
-import net.minecraft.client.render.VertexConsumer;
-import net.minecraft.client.render.VertexConsumerProvider;
+import net.minecraft.client.render.*;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.client.util.math.Vector3f;
 import net.minecraft.entity.player.PlayerEntity;
@@ -226,6 +225,7 @@ public abstract class MixinInGameHud {
     }
 
     public void renderDungeonMap(MatrixStack matrices) {
+        BufferBuilder bufferBuilder = Tessellator.getInstance().getBuffer();
         VertexConsumerProvider vertexConsumers = this.client.getBufferBuilders().getEntityVertexConsumers();
 
         ItemStack stack = this.client.player.inventory.main.get(8);
@@ -235,20 +235,22 @@ public abstract class MixinInGameHud {
             return;
         }
 
-        matrices.multiply(Vector3f.POSITIVE_Y.getDegreesQuaternion(180.0F));
-        matrices.multiply(Vector3f.POSITIVE_Z.getDegreesQuaternion(180.0F));
-        matrices.scale(0.38F, 0.38F, 0.38F);
-        matrices.translate(-0.5D, -0.5D, 0.0D);
-        matrices.scale(0.0078125F, 0.0078125F, 0.0078125F);
         MapState mapState = FilledMapItem.getOrCreateMapState(stack, this.client.world);
-        VertexConsumer vertexConsumer = vertexConsumers.getBuffer(mapState == null ? MAP_BACKGROUND : MAP_BACKGROUND_CHECKERBOARD);
-        Matrix4f matrix4f = matrices.peek().getModel();
-        vertexConsumer.vertex(matrix4f, -7.0F, 135.0F, 0.0F).color(255, 255, 255, 255).texture(0.0F, 1.0F).light(1).next();
-        vertexConsumer.vertex(matrix4f, 135.0F, 135.0F, 0.0F).color(255, 255, 255, 255).texture(1.0F, 1.0F).light(1).next();
-        vertexConsumer.vertex(matrix4f, 135.0F, -7.0F, 0.0F).color(255, 255, 255, 255).texture(1.0F, 0.0F).light(1).next();
-        vertexConsumer.vertex(matrix4f, -7.0F, -7.0F, 0.0F).color(255, 255, 255, 255).texture(0.0F, 0.0F).light(1).next();
+
+        bufferBuilder.begin(7, VertexFormats.POSITION_COLOR);
+        bufferBuilder.vertex(128,   0, 0).color(128, 128, 128, 255).next();
+        bufferBuilder.vertex(  0,   0, 0).color(128, 128, 128, 255).next();
+        bufferBuilder.vertex(  0, 128, 0).color(128, 128, 128, 255).next();
+        bufferBuilder.vertex(128, 128, 0).color(128, 128, 128, 255).next();
+        bufferBuilder.end();
+        BufferRenderer.draw(bufferBuilder);
+
         if (mapState != null) {
-            this.client.gameRenderer.getMapRenderer().draw(matrices, vertexConsumers, mapState, false, 255);
+            matrices.push();
+            matrices.translate(0, 0, 10);
+
+            this.client.gameRenderer.getMapRenderer().draw(matrices, vertexConsumers, mapState, false, 512);
+            matrices.pop();
         }
     }
 }
