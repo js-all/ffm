@@ -14,6 +14,7 @@ import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.Matrix3f;
 import net.minecraft.util.math.Matrix4f;
+import org.lwjgl.opengl.GL11;
 
 public class FFMGraphicsHelper {
     static void drawBlendingTexturedQuad(Matrix4f matrices, int x0, int x1, int y0, int y1, int z, float u0, float u1, float v0, float v1) {
@@ -182,10 +183,23 @@ public class FFMGraphicsHelper {
         RenderSystem.enableDepthTest();
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
-        RenderSystem.shadeModel(7425);
         tessellator.draw();
-        RenderSystem.shadeModel(7424);
         RenderSystem.disableBlend();
+    }
+
+    public static void makeBufferBuilderRegularPolygon(BufferBuilder bufferBuilder, float radius, int sides, float cx, float cy, int z, int a, int r, int g, int b) {
+        bufferBuilder.begin(7, VertexFormats.POSITION_COLOR);
+        double sideAngle = 2*Math.PI / sides;
+        for(int i = sides - 1; i >= 0; i--) {
+            double angle = i * sideAngle;
+            double x = cx + Math.cos(angle) * radius;
+            double y = cy + Math.sin(angle) * radius;
+
+            System.out.println(x + ", " + y);
+
+            bufferBuilder.vertex(x, y, z).color(r, g, b, a).next();
+        }
+        bufferBuilder.end();
     }
 
     public static void drawOutlinedText(TextRenderer textRenderer, MatrixStack matrices, Text txt, float x, float y, int color, int outlineColor) {
@@ -195,5 +209,65 @@ public class FFMGraphicsHelper {
         textRenderer.draw(matrices, txt, x + 0, y + 1, outlineColor);
 
         textRenderer.draw(matrices, txt, x, y, color);
+    }
+    /** call this before writing to the stencil */
+    public static void beginStencil(int stencilBit) {
+        GL11.glEnable(GL11.GL_STENCIL_TEST);
+        GL11.glEnable(GL11.GL_ALPHA_TEST);
+
+        RenderSystem.colorMask (false, false, false, false);
+        RenderSystem.depthMask(false);
+
+        RenderSystem.stencilOp(GL11.GL_KEEP, GL11.GL_KEEP, GL11.GL_REPLACE);
+
+        RenderSystem.stencilFunc(GL11.GL_ALWAYS, stencilBit, stencilBit);
+        RenderSystem.alphaFunc(GL11.GL_GREATER, 0);
+        RenderSystem.stencilMask(stencilBit);
+
+        RenderSystem.clear(GL11.GL_STENCIL_BUFFER_BIT, false);
+    }
+    // call this after writing to the stencil, to use it on the draw
+    public static void useStencil(int stencilBit) {
+        RenderSystem.colorMask (true, true, true, true);
+        RenderSystem.depthMask(true);
+        GL11.glDisable(GL11.GL_ALPHA_TEST);
+        RenderSystem.stencilMask(0x00);
+        RenderSystem.stencilFunc(GL11.GL_EQUAL, stencilBit, stencilBit);
+        RenderSystem.stencilOp (GL11.GL_KEEP, GL11.GL_KEEP, GL11.GL_KEEP);
+    }
+    // call this after using the stencil to disable it
+    public static void endStencil() {
+        GL11.glDisable(GL11.GL_STENCIL_TEST);
+    }
+
+    public static void drawArrow(MatrixStack matrices, BufferBuilder bufferBuilder, float cx, float cy, float z, float width, float height, float buttHeight, int color1, int color2) {
+        Matrix4f matrix = matrices.peek().getModel();
+        float headHeight = height - buttHeight;
+
+        int A1 = color1 >> 24 & 0xff;
+        int R1 = color1 >> 16 & 0xff;
+        int G1 = color1 >>  8 & 0xff;
+        int B1 = color1 >>  0 & 0xff;
+        int A2 = color2 >> 24 & 0xff;
+        int R2 = color2 >> 16 & 0xff;
+        int G2 = color2 >>  8 & 0xff;
+        int B2 = color2 >>  0 & 0xff;
+
+        bufferBuilder.begin(GL11.GL_TRIANGLE_STRIP, VertexFormats.POSITION_COLOR);
+        bufferBuilder.vertex(matrix, cx + 0        , cy - headHeight, z).color(R1, G1, B1, A1).next();
+        bufferBuilder.vertex(matrix, cx - width / 2, cy + buttHeight, z).color(R1, G1, B1, A1).next();
+        bufferBuilder.vertex(matrix, cx + 0        , cy + 0         , z).color(R1, G1, B1, A1).next();
+        bufferBuilder.vertex(matrix, cx + 0        , cy - headHeight, z).color(R2, G2, B2, A2).next();
+        bufferBuilder.vertex(matrix, cx + width / 2, cy + buttHeight, z).color(R2, G2, B2, A2).next();
+        bufferBuilder.vertex(matrix, cx + 0        , cy + 0         , z).color(R2, G2, B2, A2).next();
+        bufferBuilder.end();
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+        BufferRenderer.draw(bufferBuilder);
+    }
+
+    public static void drawOutlinedArrow(MatrixStack matrices, BufferBuilder bufferBuilder, float cx, float cy, float z, float width, float height, float buttHeight, float outlineWidth, int color1, int color2, int outlineColor) {
+        FFMGraphicsHelper.drawArrow(matrices, bufferBuilder, cx, cy + outlineWidth, z, width + 2 * outlineWidth, height + 2 * outlineWidth, buttHeight, outlineColor, outlineColor);
+        FFMGraphicsHelper.drawArrow(matrices, bufferBuilder, cx, cy, z, width, height, buttHeight, color1, color2);
     }
 }

@@ -10,10 +10,9 @@ import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.client.util.math.Vector3f;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.FilledMapItem;
-import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
+import net.minecraft.item.map.MapIcon;
 import net.minecraft.item.map.MapState;
-import net.minecraft.screen.slot.Slot;
 import net.minecraft.text.OrderedText;
 import net.minecraft.text.Style;
 import net.minecraft.text.Text;
@@ -22,7 +21,6 @@ import net.minecraft.util.Identifier;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Matrix4f;
 import net.minecraft.util.registry.Registry;
-import org.apache.http.impl.conn.SystemDefaultRoutePlanner;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -32,7 +30,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.Map;
 
 @Mixin(InGameHud.class)
@@ -224,33 +222,148 @@ public abstract class MixinInGameHud {
         }
     }
 
-    public void renderDungeonMap(MatrixStack matrices) {
-        BufferBuilder bufferBuilder = Tessellator.getInstance().getBuffer();
-        VertexConsumerProvider vertexConsumers = this.client.getBufferBuilders().getEntityVertexConsumers();
+    private float lastPlayerPosX = 0;
+    private float lastPlayerPosY = 0;
+    private float probablyWrongPlayerPosX = 1024;
+    private float probablyWrongPlayerPosY = 1024;
+    private boolean lastPassWasSuspicious = false;
+    private float oldPlayerPosX = 0;
+    private float oldPlayerPosY = 0;
+    private LocalDateTime lastPlayerChange = LocalDateTime.now();
 
+    public void renderDungeonMap(MatrixStack matrices) {
+        // get the itemStack in the last hotbar slot
         ItemStack stack = this.client.player.inventory.main.get(8);
 
-        // skip if no map in last hotbar slot
-        if(stack.isEmpty() || stack.getItem() != Registry.ITEM.get(new Identifier("minecraft:filled_map"))) {
+        // skip if not a map (or is the dungeon score map)
+        if(stack.isEmpty() || stack.getItem() != Registry.ITEM.get(new Identifier("minecraft:filled_map")) || stack.getName().getString().contains("Score"))
             return;
-        }
-
+        // get map state and bufferBuilder
         MapState mapState = FilledMapItem.getOrCreateMapState(stack, this.client.world);
+        BufferBuilder bufferBuilder = Tessellator.getInstance().getBuffer();
 
-        bufferBuilder.begin(7, VertexFormats.POSITION_COLOR);
-        bufferBuilder.vertex(128,   0, 0).color(128, 128, 128, 255).next();
-        bufferBuilder.vertex(  0,   0, 0).color(128, 128, 128, 255).next();
-        bufferBuilder.vertex(  0, 128, 0).color(128, 128, 128, 255).next();
-        bufferBuilder.vertex(128, 128, 0).color(128, 128, 128, 255).next();
-        bufferBuilder.end();
-        BufferRenderer.draw(bufferBuilder);
+        // begin rendering
+        matrices.push();
+        matrices.translate(HudConfig.globalMapTranslate.getX(), HudConfig.globalMapTranslate.getY(), HudConfig.globalMapTranslate.getZ());
+        matrices.scale(HudConfig.globalMapScale, HudConfig.globalMapScale, 1);
 
         if (mapState != null) {
-            matrices.push();
-            matrices.translate(0, 0, 10);
+            // get the players' mapIcons
+            MapIcon playerIcon = null;
+            ArrayList<MapIcon> otherPlayersIcon = new ArrayList<>();
 
-            this.client.gameRenderer.getMapRenderer().draw(matrices, vertexConsumers, mapState, false, 512);
+            for (MapIcon v : mapState.icons.values()) {
+                if (v.getTypeId() == (byte) 3) { // other player (=> BLUE_MARKER type)
+                    otherPlayersIcon.add(v);
+                } else if (v.getTypeId() == (byte) 1) { // the player (=> FRAME type)
+                    playerIcon = v;
+                }
+            }
+
+            // get the player pos
+            float playerIconPosX = playerIcon == null ? lastPlayerPosX : playerIcon.getX() / -2;
+            float playerIconPosY = playerIcon == null ? lastPlayerPosY : playerIcon.getZ() / -2;
+
+            // update timestamps (for interpolation)
+            if(lastPlayerPosX != playerIconPosX || lastPlayerPosY != playerIconPosY) {
+                lastPlayerChange = LocalDateTime.now();
+                oldPlayerPosX = lastPlayerPosX;
+                oldPlayerPosY = lastPlayerPosY;
+            }
+
+            // interpolate
+            long elapsedNanos = Duration.between(lastPlayerChange, LocalDateTime.now()).toNanos();
+            long maxElapsedNanos = HudConfig.mapChangeInterval.toNanos();
+            // when t is 0, the change just happened, when it is 1 it has been at least HudConfig.mapChangeInterval.
+            double t = (double) elapsedNanos /  (double) maxElapsedNanos;
+            // clamp to one to avoid interpolation going further than it should
+            t = t >= 1 ? 1 : t;
+
+            // interpolate
+            float interpolatedPlayerPosX = MathHelper.lerp((float) t, oldPlayerPosX, lastPlayerPosX);
+            float interpolatedPlayerPosY = MathHelper.lerp((float) t, oldPlayerPosY, lastPlayerPosY);
+
+            float playerRotation = client.getCameraEntity().yaw;
+
+            // draw background
+            client.getTextureManager().bindTexture(new Identifier("ffm", "map_background.png"));
+            bufferBuilder.begin(7, VertexFormats.POSITION_COLOR_TEXTURE);
+            Matrix4f matrix = matrices.peek().getModel();
+            bufferBuilder.vertex(matrix, 131, -3f, 0).color(255, 255, 255, 255).texture(1, 0).next();
+            bufferBuilder.vertex(matrix, -3f, -3f, 0).color(255, 255, 255, 255).texture(0, 0).next();
+            bufferBuilder.vertex(matrix, -3f, 131, 0).color(255, 255, 255, 255).texture(0, 1).next();
+            bufferBuilder.vertex(matrix, 131, 131, 0).color(255, 255, 255, 255).texture(1, 1).next();
+            bufferBuilder.end();
+            RenderSystem.enableBlend();
+            RenderSystem.defaultBlendFunc();
+            BufferRenderer.draw(bufferBuilder);
+
+            // setup stencil
+            int stencilBit = 0xff;
+            FFMGraphicsHelper.beginStencil(stencilBit);
+
+            // draw circle mask
+            client.getTextureManager().bindTexture(new Identifier("ffm", "circle.png"));
+            bufferBuilder.begin(7, VertexFormats.POSITION_COLOR_TEXTURE);
+
+            bufferBuilder.vertex(matrix, 128,   0, 0).color(255, 255, 255, 255).texture(1, 0).next();
+            bufferBuilder.vertex(matrix,   0,   0, 0).color(255, 255, 255, 255).texture(0, 0).next();
+            bufferBuilder.vertex(matrix,   0, 128, 0).color(255, 255, 255, 255).texture(0, 1).next();
+            bufferBuilder.vertex(matrix, 128, 128, 0).color(255, 255, 255, 255).texture(1, 1).next();
+            bufferBuilder.end();
+            RenderSystem.enableBlend();
+            RenderSystem.defaultBlendFunc();
+            BufferRenderer.draw(bufferBuilder);
+
+            // use stencil (or mask)
+            FFMGraphicsHelper.useStencil(stencilBit);
+
+            matrices.push();
+            // translate scale and rotate map
+            matrices.translate(64, 64, 0);
+            matrices.multiply(Vector3f.POSITIVE_Z.getDegreesQuaternion(-playerRotation + 180));
+            matrices.scale(HudConfig.localMapScale, HudConfig.localMapScale, 1);
+            matrices.translate(-64, -64, 0);
+            matrices.translate(interpolatedPlayerPosX, interpolatedPlayerPosY, 0);
+            // draw map
+            VertexConsumerProvider.Immediate immediate = VertexConsumerProvider.immediate(bufferBuilder);
+            this.client.gameRenderer.getMapRenderer().draw(matrices, immediate, mapState, true, 15728880);
+            immediate.draw();
+
+            // colors are wrong without that
+            client.getTextureManager().bindTexture(new Identifier("ffm", "pixel.png"));
+            // draw other players
+            for(MapIcon marker : otherPlayersIcon) {
+                matrices.push();
+                matrices.translate(64 + (float)(marker.getX()) / 2, 64 + (float)(marker.getZ()) / 2, 0);
+                matrices.multiply(Vector3f.POSITIVE_Z.getDegreesQuaternion((float)(marker.getRotation()) / 16 * 360 + 180f));
+                // render on 0,0, to rotate with the matrices
+                FFMGraphicsHelper.drawOutlinedArrow(matrices, bufferBuilder,
+                        0, 0, 10,
+                        HudConfig.mapArrowWidth, HudConfig.mapArrowHeight,
+                        HudConfig.mapArrowButtHeight,
+                        HudConfig.mapArrowOutlineWidth,
+                        0xff60a8d1, 0xff38779c, HudConfig.mapArrowOutlineColor);
+                matrices.pop();
+            }
+
             matrices.pop();
+            // clear stencil
+            FFMGraphicsHelper.endStencil();
+
+            lastPlayerPosX = playerIconPosX;
+            lastPlayerPosY = playerIconPosY;
         }
+        // draw player arrow (doesn't care about the above because it will always be centered
+        Matrix4f matrix = matrices.peek().getModel();
+
+        FFMGraphicsHelper.drawOutlinedArrow(matrices, bufferBuilder,
+                64, 64, 10,
+                HudConfig.mapArrowWidth, HudConfig.mapArrowHeight,
+                HudConfig.mapArrowButtHeight,
+                HudConfig.mapArrowOutlineWidth,
+                0xffffffff, 0xffaaaaaa, HudConfig.mapArrowOutlineColor);
+
+        matrices.pop();
     }
 }

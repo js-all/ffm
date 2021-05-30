@@ -2,6 +2,7 @@ package dev.viandox.ffm;
 
 import com.google.common.collect.Maps;
 
+import java.time.Duration;
 import java.util.Map;
 
 public class FFMUtils {
@@ -20,5 +21,19 @@ public class FFMUtils {
         System.out.println(fac + "   =>  '" + str.replaceAll("[0-9-.,]", "") + "'");
         fac = fac == null ? 1 : fac;
         return (long) (numberPart * fac);
+    }
+
+    public static String formatDuration(Duration duration) {
+        long seconds = duration.getSeconds();
+        long absSeconds = Math.abs(seconds);
+        long nanos = duration.toNanos() % 1_000_000_000L;
+        long ms = Math.abs(nanos / 1_000_000);
+        String positive = String.format(
+                "%d:%02d:%02d.%03d",
+                absSeconds / 3600,
+                (absSeconds % 3600) / 60,
+                absSeconds % 60,
+                ms);
+        return seconds < 0 ? "-" + positive : positive;
     }
 }

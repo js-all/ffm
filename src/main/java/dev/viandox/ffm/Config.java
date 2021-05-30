@@ -31,4 +31,6 @@ public class Config {
     /** the minimum delay between two scrapping of the player list, minimum because the scrapping is attempted every update, and dropped if under the delay */
     public static Duration minDelayBetweenPlayerListScrapping = Duration.of(1, ChronoUnit.SECONDS);
     public static boolean hideArmorBar = true;
+
+    public static boolean stencilEnabled = true;
 }
