@@ -1,6 +1,9 @@
 package dev.viandox.ffm;
 
 import com.google.common.collect.Maps;
+import net.minecraft.item.ItemStack;
+import net.minecraft.util.Identifier;
+import net.minecraft.util.registry.Registry;
 
 import java.time.Duration;
 import java.util.Map;
@@ -35,5 +38,9 @@ public class FFMUtils {
                 absSeconds % 60,
                 ms);
         return seconds < 0 ? "-" + positive : positive;
+    }
+
+    public static boolean isItemStackBackgroundGlassPane(ItemStack itemStack) {
+        return itemStack.getItem() == Registry.ITEM.get(new Identifier("minecraft:black_stained_glass_pane")) && itemStack.getName().getString().equals(" ");
     }
 }

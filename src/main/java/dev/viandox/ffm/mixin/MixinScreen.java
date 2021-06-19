@@ -2,9 +2,11 @@ package dev.viandox.ffm.mixin;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 
+import net.minecraft.text.*;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -25,9 +27,6 @@ import net.minecraft.client.render.Tessellator;
 import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.text.OrderedText;
-import net.minecraft.text.Style;
-import net.minecraft.text.TextColor;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.Matrix4f;
 
@@ -130,9 +129,22 @@ public class MixinScreen {
         // reset buffers to clear the original tooltip and prevent it from rendering
         bufferBuilder.end();
         bufferBuilder.reset();
+
         // bind rounded corner texture
         this.client.getTextureManager().bindTexture(new Identifier("ffm", "corner.png"));
         bufferBuilder.begin(7, VertexFormats.POSITION_TEXTURE_COLOR);
+
+        // done now to not have the old tooltip, but still have the bufferBuilder
+        // began because the original minecraft code ends it
+
+        // get the string value of the name of the item
+        AtomicReference<String> name = new AtomicReference<>("");
+        lines.get(0).accept((index,  style,  codePoint) -> {
+            name.set(name.get().concat(String.valueOf(Character.toChars(codePoint))));
+            return true;
+        });
+        // don't render if empty and single lined
+        if(lines.size() == 1 && name.get().equals(" ")) return;
 
         // if you don't understand this code (why l + n + 6 - b + h - v + f or the UV coordinates for example) don't worry
         // i don't either, just don't think about it, it mostly works, and that's all that matters.

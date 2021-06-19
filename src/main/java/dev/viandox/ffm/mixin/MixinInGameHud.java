@@ -298,9 +298,9 @@ public abstract class MixinInGameHud {
             RenderSystem.defaultBlendFunc();
             BufferRenderer.draw(bufferBuilder);
 
-            // setup stencil
-            int stencilBit = 0xff;
-            FFMGraphicsHelper.beginStencil(stencilBit);
+            FFMGraphicsHelper.StencilHelper stencilHelper =
+                    new FFMGraphicsHelper.StencilHelper(FFMGraphicsHelper.StencilHelper.RESET_OPENGL_STATE_ON_END);
+            stencilHelper.beginStencil();
 
             // draw circle mask
             client.getTextureManager().bindTexture(new Identifier("ffm", "circle.png"));
@@ -316,7 +316,7 @@ public abstract class MixinInGameHud {
             BufferRenderer.draw(bufferBuilder);
 
             // use stencil (or mask)
-            FFMGraphicsHelper.useStencil(stencilBit);
+            stencilHelper.useStencil();
 
             matrices.push();
             // translate scale and rotate map
@@ -349,7 +349,7 @@ public abstract class MixinInGameHud {
 
             matrices.pop();
             // clear stencil
-            FFMGraphicsHelper.endStencil();
+            stencilHelper.endStencil();
 
             lastPlayerPosX = playerIconPosX;
             lastPlayerPosY = playerIconPosY;

@@ -15,6 +15,12 @@ import net.minecraft.util.Identifier;
 import net.minecraft.util.math.Matrix3f;
 import net.minecraft.util.math.Matrix4f;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL20;
+import org.lwjgl.opengl.GL31;
+import org.lwjgl.opengl.GL40;
+
+import java.nio.ByteBuffer;
+import java.nio.IntBuffer;
 
 public class FFMGraphicsHelper {
     static void drawBlendingTexturedQuad(Matrix4f matrices, int x0, int x1, int y0, int y1, int z, float u0, float u1, float v0, float v1) {
@@ -210,35 +216,6 @@ public class FFMGraphicsHelper {
 
         textRenderer.draw(matrices, txt, x, y, color);
     }
-    /** call this before writing to the stencil */
-    public static void beginStencil(int stencilBit) {
-        GL11.glEnable(GL11.GL_STENCIL_TEST);
-        GL11.glEnable(GL11.GL_ALPHA_TEST);
-
-        RenderSystem.colorMask (false, false, false, false);
-        RenderSystem.depthMask(false);
-
-        RenderSystem.stencilOp(GL11.GL_KEEP, GL11.GL_KEEP, GL11.GL_REPLACE);
-
-        RenderSystem.stencilFunc(GL11.GL_ALWAYS, stencilBit, stencilBit);
-        RenderSystem.alphaFunc(GL11.GL_GREATER, 0);
-        RenderSystem.stencilMask(stencilBit);
-
-        RenderSystem.clear(GL11.GL_STENCIL_BUFFER_BIT, false);
-    }
-    // call this after writing to the stencil, to use it on the draw
-    public static void useStencil(int stencilBit) {
-        RenderSystem.colorMask (true, true, true, true);
-        RenderSystem.depthMask(true);
-        GL11.glDisable(GL11.GL_ALPHA_TEST);
-        RenderSystem.stencilMask(0x00);
-        RenderSystem.stencilFunc(GL11.GL_EQUAL, stencilBit, stencilBit);
-        RenderSystem.stencilOp (GL11.GL_KEEP, GL11.GL_KEEP, GL11.GL_KEEP);
-    }
-    // call this after using the stencil to disable it
-    public static void endStencil() {
-        GL11.glDisable(GL11.GL_STENCIL_TEST);
-    }
 
     public static void drawArrow(MatrixStack matrices, BufferBuilder bufferBuilder, float cx, float cy, float z, float width, float height, float buttHeight, int color1, int color2) {
         Matrix4f matrix = matrices.peek().getModel();
@@ -269,5 +246,81 @@ public class FFMGraphicsHelper {
     public static void drawOutlinedArrow(MatrixStack matrices, BufferBuilder bufferBuilder, float cx, float cy, float z, float width, float height, float buttHeight, float outlineWidth, int color1, int color2, int outlineColor) {
         FFMGraphicsHelper.drawArrow(matrices, bufferBuilder, cx, cy + outlineWidth, z, width + 2 * outlineWidth, height + 2 * outlineWidth, buttHeight, outlineColor, outlineColor);
         FFMGraphicsHelper.drawArrow(matrices, bufferBuilder, cx, cy, z, width, height, buttHeight, color1, color2);
+    }
+
+    public static class StencilHelper {
+        public static byte RESET_OPENGL_STATE_ON_USE = 0;
+        public static byte RESET_OPENGL_STATE_ON_END = 1;
+
+        private int stencilBit;
+        private boolean glAlphaTestOld;
+        private int glAlphaFuncOld;
+        private float glAlphaFuncRefOld;
+        private final boolean[] glColorMaskOld = new boolean[4];
+        private boolean glDepthMaskOld;
+        private final byte resetOpenglStatePoint;
+        public StencilHelper(byte resetOpenglStatePoint) {
+            this.stencilBit = 0xff;
+            this.resetOpenglStatePoint = resetOpenglStatePoint;
+        }
+
+        public int getStencilBit() {
+            return stencilBit;
+        }
+        public void setStencilBit(int stencilBit) {
+            this.stencilBit = stencilBit;
+        }
+        public void beginStencil() {
+            this.glAlphaTestOld = GL11.glIsEnabled(GL11.GL_ALPHA_TEST);
+            int[] tmp = new int[4];
+            // i really couldn't get glGetBooleanv to work
+            GL11.glGetIntegerv(GL11.GL_COLOR_WRITEMASK, tmp);
+
+            this.glColorMaskOld[1] = tmp[0] == GL11.GL_TRUE;
+            this.glColorMaskOld[0] = tmp[1] == GL11.GL_TRUE;
+            this.glColorMaskOld[2] = tmp[2] == GL11.GL_TRUE;
+            this.glColorMaskOld[3] = tmp[3] == GL11.GL_TRUE;
+            this.glDepthMaskOld = GL11.glGetBoolean(GL11.GL_DEPTH_WRITEMASK);
+            this.glAlphaFuncOld = GL11.glGetInteger(GL11.GL_ALPHA_TEST_FUNC);
+            this.glAlphaFuncRefOld = GL11.glGetFloat(GL11.GL_ALPHA_TEST_REF);
+
+            GL11.glEnable(GL11.GL_STENCIL_TEST);
+            GL11.glEnable(GL11.GL_ALPHA_TEST);
+
+            RenderSystem.colorMask (false, false, false, false);
+            RenderSystem.depthMask(false);
+
+            RenderSystem.stencilOp(GL11.GL_KEEP, GL11.GL_KEEP, GL11.GL_REPLACE);
+
+            RenderSystem.stencilFunc(GL11.GL_ALWAYS, stencilBit, stencilBit);
+            RenderSystem.alphaFunc(GL11.GL_GREATER, 0);
+            RenderSystem.stencilMask(stencilBit);
+
+            RenderSystem.clear(GL11.GL_STENCIL_BUFFER_BIT, false);
+        }
+
+        public void useStencil() {
+            RenderSystem.colorMask (true, true, true, true);
+            RenderSystem.depthMask(true);
+            GL11.glDisable(GL11.GL_ALPHA_TEST);
+            RenderSystem.stencilMask(0x00);
+            RenderSystem.stencilFunc(GL11.GL_EQUAL, stencilBit, stencilBit);
+            RenderSystem.stencilOp (GL11.GL_KEEP, GL11.GL_KEEP, GL11.GL_KEEP);
+
+            if(this.resetOpenglStatePoint == RESET_OPENGL_STATE_ON_USE) this.resetOpenglState();
+        }
+
+        public void endStencil() {
+            GL11.glDisable(GL11.GL_STENCIL_TEST);
+            if(this.resetOpenglStatePoint == RESET_OPENGL_STATE_ON_END) this.resetOpenglState();
+        }
+
+        private void resetOpenglState() {
+            RenderSystem.colorMask(this.glColorMaskOld[0], this.glColorMaskOld[1], this.glColorMaskOld[2], this.glColorMaskOld[3]);
+            RenderSystem.depthMask(this.glDepthMaskOld);
+            if(this.glAlphaTestOld) GL11.glEnable(GL11.GL_ALPHA_TEST);
+            else GL11.glDisable(GL11.GL_ALPHA_TEST);
+            GL11.glAlphaFunc(this.glAlphaFuncOld, this.glAlphaFuncRefOld);
+        }
     }
 }

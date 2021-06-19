@@ -1,8 +1,11 @@
 package dev.viandox.ffm.mixin;
 
+import com.mojang.blaze3d.systems.RenderSystem;
+import dev.viandox.ffm.FFMUtils;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
 import dev.viandox.ffm.Config;
@@ -11,6 +14,7 @@ import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.client.util.math.Vector3f;
 import net.minecraft.item.ItemStack;
 import net.minecraft.screen.slot.Slot;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(HandledScreen.class)
 public class MixinHandledScreen {
@@ -72,6 +76,33 @@ public class MixinHandledScreen {
 
         } catch (Exception e) {
             e.printStackTrace();
+        }
+    }
+
+    @Inject(
+            method = "drawSlot",
+            at = @At("HEAD"),
+            cancellable = true
+    )
+    // don't draw the glass pane item
+    public void cancelDrawSlotIfBackgroundGlassPane(MatrixStack matrices, Slot slot, CallbackInfo ci) {
+        if(FFMUtils.isItemStackBackgroundGlassPane(slot.getStack())) {
+            ci.cancel();
+        }
+    }
+
+    @Inject(
+            method = "render",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/client/gui/screen/ingame/HandledScreen;fillGradient(Lnet/minecraft/client/util/math/MatrixStack;IIIIII)V",
+                    shift = At.Shift.BEFORE
+            )
+    )
+    public void preventDrawingOfMouseOverOverlayIfBackgroundGlassPane(CallbackInfo ci) {
+        if(FFMUtils.isItemStackBackgroundGlassPane(this.focusedSlot.getStack())) {
+            // is reset the line after the draw we want to cancel
+            RenderSystem.colorMask(false, false, false, false);
         }
     }
 }
