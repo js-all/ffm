@@ -8,7 +8,7 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
 
-import dev.viandox.ffm.Config;
+import dev.viandox.ffm.config.Config;
 import dev.viandox.ffm.IGetTextHandler;
 
 @Mixin(TextRenderer.class)

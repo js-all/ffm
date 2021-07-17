@@ -976,4 +976,104 @@ public class ColorConverter {
 
 		return new float[] {h, s, l};
     }
+
+    /**
+     * CIE-LAB -> CIE-LCH
+     * @param l L coefficient.
+     * @param a A coefficient.
+     * @param b B coefficient.
+     * @return LCH color space.
+     */
+    public static float[] LABtoLCH(float l, float a, float b) {
+        float h = (float) Math.atan2(b, a);
+
+        if (h > 0 ) h = (float) (h / Math.PI * 180);
+        else h = (float) (360 - (Math.abs(h) / Math.PI ) * 180);
+
+        float c = (float) Math.sqrt(a * a + b * b);
+        return new float[] {l, c, h};
+    }
+    /**
+     * CIE-LCH -> CIE-LAB
+     * @param l L coefficient.
+     * @param c C coefficient.
+     * @param h H coefficient.
+     * @return LCH color space.
+     */
+    public static float[] LCHtoLAB(float l, float c, float h) {
+        float h_ = (float) (h / 180 * Math.PI);
+        return new float[] {l, (float) (Math.cos(h_) * c), (float) (Math.sin(h_) * c)};
+    }
+    /**
+     * RGB -> CIE-LCH
+     * @param r red coefficient.
+     * @param g green coefficient.
+     * @param b blue coefficient.
+     * @param tristimulus XYZ Tristimulus.
+     * @return LCH color space.
+     */
+    public static float[] RGBtoLCH(int r, int g, int b, float[] tristimulus) {
+        float[] lab = RGBtoLAB(r, g, b, tristimulus);
+        return LABtoLCH(lab[0], lab[1], lab[2]);
+    }
+
+    /**
+     * CIE-LCH -> RGB
+     * @param l L coefficient.
+     * @param c A coefficient.
+     * @param h B coefficient.
+     * @param tristimulus XYZ Tristimulus.
+     * @return LCH color space.
+     */
+    public static int[] LCHtoRGB(float l, float c, float h, float[] tristimulus) {
+        float[] lab = LCHtoLAB(l, c, h);
+        return LABtoRGB(lab[0], lab[1], lab[2], tristimulus);
+    }
+
+    /**
+     * clamp an rgb color with all channel from 0 to 255
+     * @param rgb the rgb color
+     * @return the clamped rgb color
+     */
+    public static int[] clampRGB(int[] rgb) {
+        return new int[] {
+                Math.max(Math.min(rgb[0], 255), 0),
+                Math.max(Math.min(rgb[1], 255), 0),
+                Math.max(Math.min(rgb[2], 255), 0)
+        };
+    }
+
+    public static int[] lerpRGB(int[] rgb1, int[] rgb2, float f) {
+        float[] lch = lerpLCH(
+                RGBtoLCH(rgb1[0], rgb1[1], rgb1[2], CIE2_D65),
+                RGBtoLCH(rgb2[0], rgb2[1], rgb2[2], CIE2_D65),
+                f);
+        return LCHtoRGB(lch[0], lch[1], lch[2], CIE2_D65);
+    }
+
+    public static float[] lerpLCH(float[] lch1, float[] lch2, float f) {
+        float h1 = lch1[2];
+        float h2 = lch2[2];
+        float dh;
+
+        if (h2 > h1 && h2 - h1 > 180) {
+            dh = h2 - (h1 + 360);
+        } else if (h2 < h1 && h1 - h2 > 180) {
+            dh = h2 + 360 - h1;
+        } else {
+            dh = h2 - h1;
+        }
+        float h = h1 + f * dh;
+        float c = lch1[1] + f * (lch2[1] - lch1[1]);
+        float l = lch1[0] + f * (lch2[0] - lch1[0]);
+        return new float[] {l, c, h};
+    }
+
+    public static int[] INTtoRGB(int color) {
+        return new int[] {color >> 16 & 0xff, color >> 8 & 0xff, color & 0xff};
+    }
+
+    public static int RGBtoINT(int[] rgb) {
+        return ((0xff << 8 | rgb[0]) << 8 | rgb[1]) << 8 | rgb[2];
+    }
 }

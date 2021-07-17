@@ -2,6 +2,7 @@ package dev.viandox.ffm.mixin;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import dev.viandox.ffm.*;
+import dev.viandox.ffm.config.Config;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.hud.InGameHud;
@@ -132,6 +133,15 @@ public abstract class MixinInGameHud {
                     this.scaledHeight - 5 - textRenderer.fontHeight,
                     0xff00ff00,
                     0xff000000);
+            // speed
+            txt = Text.of(Integer.toString(PlayerListScrapper.speed));
+            FFMGraphicsHelper.drawOutlinedText(textRenderer,
+                    matrices,
+                    txt,
+                    10,
+                    this.scaledHeight - 7 - textRenderer.fontHeight * 2,
+                    0xffffffff,
+                    0xff000000);
             // item charges
             if(ActionBarScrapper.holdingChargesItem) {
                 float chargesSize = 12;
@@ -152,14 +162,14 @@ public abstract class MixinInGameHud {
             }
             // ability uses
             Duration running = Duration.between(ActionBarScrapper.lastAbilityUse, now);
-            if(running.compareTo(HudConfig.playerAbilityDisplayDuration) <= 0) {
+            if(running.compareTo(Config.playerAbilityDisplayDuration) <= 0) {
                 // i honestly don't know how to comment this so
                 // https://www.desmos.com/calculator/myesx8j0wt
-                long t = HudConfig.playerAbilityTransitionDuration.toNanos();
-                double half_d = (double) (HudConfig.playerAbilityDisplayDuration.toNanos()) * 0.5;
+                long t = Config.transitionDuration.toNanos();
+                double half_d = (double) (Config.playerAbilityDisplayDuration.toNanos()) * 0.5;
                 long r = running.toNanos();
                 double x = Math.min((-Math.abs(r-half_d))+half_d, (double) t) / (double) t;
-                double fac = HudConfig.interpolationPoint1 * 3 * Math.pow(1-x, 2)*x+HudConfig.interpolationPoint2*3*(1-x)*x*x+x*x*x;
+                double fac = Config.interpolationPoint1 * 3 * Math.pow(1-x, 2)*x+ Config.interpolationPoint2*3*(1-x)*x*x+x*x*x;
                 float height = 20;
 
                 OrderedText ability = OrderedText.concat(
@@ -186,7 +196,7 @@ public abstract class MixinInGameHud {
                         0xffffffff);
             }
             // commissions
-            if(!PlayerListScrapper.commissions.isEmpty() && PlayerListScrapper.area.equals("Dwarven Mines")) {
+            if(!PlayerListScrapper.commissions.isEmpty() && PlayerListScrapper.hasCommissions) {
                 float cornerSize = 10f;
                 float paddingLeft = 20f;
                 float marginLeft = -cornerSize;
@@ -218,15 +228,13 @@ public abstract class MixinInGameHud {
                 }
             }
 
+            if(FastMenu.isOpen()) FastMenu.render(matrices);
             renderDungeonMap(matrices);
         }
     }
 
     private float lastPlayerPosX = 0;
     private float lastPlayerPosY = 0;
-    private float probablyWrongPlayerPosX = 1024;
-    private float probablyWrongPlayerPosY = 1024;
-    private boolean lastPassWasSuspicious = false;
     private float oldPlayerPosX = 0;
     private float oldPlayerPosY = 0;
     private LocalDateTime lastPlayerChange = LocalDateTime.now();
@@ -244,8 +252,8 @@ public abstract class MixinInGameHud {
 
         // begin rendering
         matrices.push();
-        matrices.translate(HudConfig.globalMapTranslate.getX(), HudConfig.globalMapTranslate.getY(), HudConfig.globalMapTranslate.getZ());
-        matrices.scale(HudConfig.globalMapScale, HudConfig.globalMapScale, 1);
+        matrices.translate(Config.globalMapTranslate.getX(), Config.globalMapTranslate.getY(), Config.globalMapTranslate.getZ());
+        matrices.scale(Config.globalMapScale, Config.globalMapScale, 1);
 
         if (mapState != null) {
             // get the players' mapIcons
@@ -273,7 +281,7 @@ public abstract class MixinInGameHud {
 
             // interpolate
             long elapsedNanos = Duration.between(lastPlayerChange, LocalDateTime.now()).toNanos();
-            long maxElapsedNanos = HudConfig.mapChangeInterval.toNanos();
+            long maxElapsedNanos = Config.mapChangeInterval.toNanos();
             // when t is 0, the change just happened, when it is 1 it has been at least HudConfig.mapChangeInterval.
             double t = (double) elapsedNanos /  (double) maxElapsedNanos;
             // clamp to one to avoid interpolation going further than it should
@@ -322,7 +330,7 @@ public abstract class MixinInGameHud {
             // translate scale and rotate map
             matrices.translate(64, 64, 0);
             matrices.multiply(Vector3f.POSITIVE_Z.getDegreesQuaternion(-playerRotation + 180));
-            matrices.scale(HudConfig.localMapScale, HudConfig.localMapScale, 1);
+            matrices.scale(Config.localMapScale, Config.localMapScale, 1);
             matrices.translate(-64, -64, 0);
             matrices.translate(interpolatedPlayerPosX, interpolatedPlayerPosY, 0);
             // draw map
@@ -340,10 +348,10 @@ public abstract class MixinInGameHud {
                 // render on 0,0, to rotate with the matrices
                 FFMGraphicsHelper.drawOutlinedArrow(matrices, bufferBuilder,
                         0, 0, 10,
-                        HudConfig.mapArrowWidth, HudConfig.mapArrowHeight,
-                        HudConfig.mapArrowButtHeight,
-                        HudConfig.mapArrowOutlineWidth,
-                        0xff60a8d1, 0xff38779c, HudConfig.mapArrowOutlineColor);
+                        Config.mapArrowWidth, Config.mapArrowHeight,
+                        Config.mapArrowButtHeight,
+                        Config.mapArrowOutlineWidth,
+                        0xff60a8d1, 0xff38779c, Config.mapArrowOutlineColor);
                 matrices.pop();
             }
 
@@ -359,10 +367,10 @@ public abstract class MixinInGameHud {
 
         FFMGraphicsHelper.drawOutlinedArrow(matrices, bufferBuilder,
                 64, 64, 10,
-                HudConfig.mapArrowWidth, HudConfig.mapArrowHeight,
-                HudConfig.mapArrowButtHeight,
-                HudConfig.mapArrowOutlineWidth,
-                0xffffffff, 0xffaaaaaa, HudConfig.mapArrowOutlineColor);
+                Config.mapArrowWidth, Config.mapArrowHeight,
+                Config.mapArrowButtHeight,
+                Config.mapArrowOutlineWidth,
+                0xffffffff, 0xffaaaaaa, Config.mapArrowOutlineColor);
 
         matrices.pop();
     }

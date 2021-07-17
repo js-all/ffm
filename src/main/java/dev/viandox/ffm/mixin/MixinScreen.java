@@ -7,6 +7,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import com.mojang.blaze3d.systems.RenderSystem;
 
 import net.minecraft.text.*;
+import net.minecraft.util.Formatting;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -16,7 +17,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.LocalCapture;
 
 import dev.viandox.ffm.ColorConverter;
-import dev.viandox.ffm.Config;
+import dev.viandox.ffm.config.Config;
 import dev.viandox.ffm.IGetTextHandler;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextHandler;
@@ -36,7 +37,10 @@ public class MixinScreen {
     TextRenderer textRenderer;
     @Shadow
     MinecraftClient client;
+    // those are used to keep data in between different injections in the same method
     private int renderOrderedTooltipLastSValue;
+    private int toolTipHeaderColor;
+
     TextHandler getTextHandler() {
         if(this.textRenderer instanceof IGetTextHandler) {
             return ((IGetTextHandler) this.textRenderer).getTextHandler();
@@ -61,11 +65,7 @@ public class MixinScreen {
      * draw buffers
      */
     void afterOldDrawingCallback(MatrixStack matrices, List<? extends OrderedText> lines, int x, int y, CallbackInfo ci, int i, int k, int l, int m, int n, int o, int p, int q, int r, Tessellator tessellator, BufferBuilder bufferBuilder, Matrix4f matrix4f) {
-        // get the first line's color
-        int color = 0xffffffff;
-        try {
-            color = this.getTextHandler().getStyleAt(lines.get(0), 0).getColor().getRgb();
-        } catch (Exception e) {}
+        int color = toolTipHeaderColor;
 
         // if the color is solid white (either because of the text, or because of an error, default to the config)
         if((color & 0x00ffffff) == 0x00ffffff) {
@@ -80,24 +80,27 @@ public class MixinScreen {
         int cb = ((color >>  0) & 0xff);
         int ca = 255;
 
-        // limit the brightness to a level, to avoid unreadable tooltips
-        float[] hslc = ColorConverter.RGBtoHSL(cr, cg, cb);
-        hslc[2] = Math.min(hslc[2], Config.ToolTipColorMaxBrightness / 100);
-        int[] rgbc = ColorConverter.HSLtoRGB(hslc[0], hslc[1], hslc[2]);
+        if (Config.ColorCorrectToolTip) {
+            // limit the lightness to a level, to avoid unreadable tooltips
+            float[] lch = ColorConverter.RGBtoLCH(cr, cg, cb, ColorConverter.CIE2_D65);
+            lch[0] += (Config.ColorCorrectToolTipLightness - lch[0]) / 4;
+            lch[1] += 20;
+            int[] rgb = ColorConverter.clampRGB(ColorConverter.LCHtoRGB(lch[0], lch[1], lch[2], ColorConverter.CIE2_D65));
 
-        cr = rgbc[0];
-        cg = rgbc[1];
-        cb = rgbc[2];
+            cr = Math.abs(rgb[0]);
+            cg = Math.abs(rgb[1]);
+            cb = Math.abs(rgb[2]);
+        }
 
         // the background greyscale color
         int BG = (int) (0.0588f * 255);
         // b[rgba] each component of the background color
         int br = BG;
         int bg = BG;
-        int bb = BG; 
+        int bb = BG;
         int ba = alp;
 
-        // a sort of offset that shrinks the tooltip by an ammount, used in single line tooltip
+        // a sort of offset that shrinks the tooltip by an amount, used in single line tooltip
         float v = 0;
         // how much to move the entire tooltip vertically, used in single line tooltip
         int f = 0;
@@ -225,19 +228,17 @@ public class MixinScreen {
     @ModifyVariable(
         method = "renderOrderedTooltip",
         ordinal = 0,
-        at = @At(
-            value = "INVOKE",
-            target = "Lnet/minecraft/client/util/math/MatrixStack;translate(DDD)V"
-        )
+        at = @At("HEAD")
     )
-    // complicated af, but simple set the color of the first line of the tooltip to solid white
+    // complicated af, but just chooses which color the header will be and make any text that color solid white
     // its this long because minecraft sucks.
     List<? extends OrderedText> updateFirstMemberOfLines(List<? extends OrderedText> list) {
         List<OrderedText> lines = new ArrayList<>(list);
-
         // if we only have one line, and invertedSingleLineToolTip is true, ignore
-        if(lines.size() == 1 && Config.invertedSingleLineToolTip) return list;
-
+        if(lines.size() == 1 && Config.invertedSingleLineToolTip) {
+            toolTipHeaderColor = 0xffffffff;
+            return list;
+        }
         // get the first line's style
         Style firstLineStyle;
         try {
@@ -245,12 +246,10 @@ public class MixinScreen {
         } catch (Exception e) {
             firstLineStyle = Style.EMPTY.withColor(TextColor.fromRgb(0xffffffff));
         }
-
         // decompose ordered text in list of strings with their corresponding style
         OrderedText firstLine = lines.get(0);
         ArrayList<String> decStrings = new ArrayList<>();
         ArrayList<Style> decStyle = new ArrayList<>();
-
         // visit the full string
         firstLine.accept((index,  style,  codePoint) -> {
             String c = String.valueOf(Character.toChars(codePoint));
@@ -264,8 +263,42 @@ public class MixinScreen {
             }
             return true;
         });
-        // set the first style to solid white
-        decStyle.set(0, firstLineStyle.withColor(TextColor.fromRgb(0xffffffff)));
+        // find style attached to the longest string (that is not delimited)
+        int longestStyleIndex = -1;
+        for(int i = 0; i < decStrings.size(); i++) {
+            String currentString = decStrings.get(i);
+            // if the string is delimited by [], (), {}, "", or '' ignore, this is to avoid coloring the header the color or secondary text
+            // for example coloring "[Lvl 87] rat" the color of "[lvl 87]" when the correct color is obviously the one of "rat"
+            if(currentString.matches("^\\s*(?:\\[.+?\\]|\\(.+?\\)|\\{.+?\\}|\".+?\"|'.+?')\\s*$")) continue;
+            int lastLongestStyleStringLength = longestStyleIndex != -1 ? decStrings.get(longestStyleIndex).length() : 0;
+            int currentStringLength = currentString.length();
+            if(currentStringLength > lastLongestStyleStringLength) {
+                longestStyleIndex = i;
+            }
+        }
+        longestStyleIndex = longestStyleIndex == -1 ? 0 : longestStyleIndex;
+
+        // set the header color
+        try {
+            toolTipHeaderColor = decStyle.get(longestStyleIndex).getColor().getRgb();
+        } catch (Exception e) {
+            toolTipHeaderColor = 0xffffffff;
+        }
+        // change every occurrence of the color of that string to solid white
+        for(int i = 0; i < decStyle.size(); i++) {
+            int currentColor;
+            try {
+                currentColor = decStyle.get(i).getColor().getRgb();
+            } catch (Exception e) {
+                currentColor = 0xffffffff;
+            }
+            // also replace gray because gray looks like shit. (on colored backgrounds)
+            if(currentColor == toolTipHeaderColor) {
+                decStyle.set(i, firstLineStyle.withColor(TextColor.fromRgb(0xffffffff)));
+            } else if(currentColor == TextColor.fromFormatting(Formatting.GRAY).getRgb()) {
+                decStyle.set(i, firstLineStyle.withColor(TextColor.fromRgb(0xffaaaaaa)));
+            }
+        }
         // reassemble the strings with style into a single orderedText
         List<OrderedText> decOrdered = new ArrayList<>();
         for(int t = 0; t < decStrings.size(); t++) {
@@ -273,7 +306,6 @@ public class MixinScreen {
         }
         // update first line
         lines.set(0, OrderedText.concat(decOrdered));
-
         return lines;
     }
     @ModifyVariable(
@@ -284,8 +316,8 @@ public class MixinScreen {
             target = "Ljava/util/List;get(I)Ljava/lang/Object;"
         )
     )
-    int addBottomPaddingtoFirstLine(int l) {
-        // i have the use this attrocity because a modifyVariable can't capture locals
+    int addBottomPaddingToFirstLine(int l) {
+        // i have the use this atrocity because a modifyVariable can't capture locals
         if(this.renderOrderedTooltipLastSValue == 0) {
             return l + (int) (Config.ToolTipMarginSize * 1.25);
         }
@@ -300,7 +332,7 @@ public class MixinScreen {
         ),
         locals = LocalCapture.CAPTURE_FAILEXCEPTION
     )
-    // s being at the verry end, i need every other argument before it
+    // s being at the very end, i need every other argument before it
     void getSValueAndSetPrivateField(MatrixStack matrices, List<?> lines, int x, int y, CallbackInfo ci, int i, int k, int l, int m, int n, int o, int p, int q, int r, Tessellator tessellator, BufferBuilder bufferBuilder, Matrix4f matrix4f, VertexConsumerProvider.Immediate immediate, int s) {
         this.renderOrderedTooltipLastSValue = s;
     }

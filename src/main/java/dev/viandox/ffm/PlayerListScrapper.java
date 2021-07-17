@@ -9,6 +9,9 @@ import net.minecraft.text.LiteralText;
 import net.minecraft.text.Text;
 import net.minecraft.world.GameMode;
 
+import java.io.FileNotFoundException;
+import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
@@ -21,9 +24,33 @@ public class PlayerListScrapper {
     // more to come, just need to define them and add to setFields
     public static Map<String, String> commissions = Maps.newHashMap();
     public static String area = null;
+    public static int speed = 100;
+    public static boolean hasCommissions = false;
+    // not accurate value, parsed from suffixed number
+    public static long bank = 0;
 
     public static void setFields(Map<String, Map<String, String>> data) {
-        if(data.containsKey("Commissions")) commissions = data.get("Commissions");
+//        try {
+//            PrintWriter writer = null;
+//            writer = new PrintWriter("player_list_scrapper_"+data.get("Area").get("__value")+"_log", "UTF-8");
+//
+//            for (Map.Entry<String, Map<String, String>> entry : data.entrySet()) {
+//                writer.println(entry.getKey() + ":");
+//                for(Map.Entry<String, String> entry1 : entry.getValue().entrySet()) {
+//                    writer.println("    " + entry1.getKey() + ": " + entry1.getValue());
+//                }
+//            }
+//
+//            writer.close();
+//        } catch (FileNotFoundException | UnsupportedEncodingException e) {
+//            e.printStackTrace();
+//        }
+        if(data.containsKey("Profile")) bank = FFMUtils.parseSuffixedNumber(data.get("Profile").get("Bank"));
+        if(data.containsKey("Skills")) speed = Integer.parseInt(data.get("Skills").get("Speed").replaceAll("[^0-9]", ""));
+        if(data.containsKey("Commissions")) {
+            hasCommissions = true;
+            commissions = data.get("Commissions");
+        };
         if(data.containsKey("Area")) area = data.get("Area").get("__value");
     }
 

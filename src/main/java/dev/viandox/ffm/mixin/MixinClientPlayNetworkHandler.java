@@ -1,15 +1,13 @@
 package dev.viandox.ffm.mixin;
 
 import com.google.common.collect.Maps;
-import dev.viandox.ffm.Config;
+import dev.viandox.ffm.config.Config;
 import dev.viandox.ffm.PlayerListScrapper;
 import net.minecraft.client.network.ClientPlayNetworkHandler;
 import net.minecraft.client.network.PlayerListEntry;
 import net.minecraft.network.packet.s2c.play.PlayerListS2CPacket;
-import net.minecraft.network.packet.s2c.play.TitleS2CPacket;
 import net.minecraft.scoreboard.Team;
 import net.minecraft.text.LiteralText;
-import net.minecraft.text.OrderedText;
 import net.minecraft.text.Text;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -20,8 +18,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
 
 @Mixin(ClientPlayNetworkHandler.class)
 public class MixinClientPlayNetworkHandler {

@@ -9,7 +9,7 @@
     "viandox"
   ],
   "contact": {
-    "sources": "https://github.com/js-all/ffm"
+    "sources": "https://github.com/viandoxdev/ffm"
   },
 
   "license": "CC0-1.0",
@@ -19,6 +19,9 @@
   "entrypoints": {
     "main": [
       "dev.viandox.ffm.ModMain"
+    ],
+    "client": [
+      "dev.viandox.ffm.FFMClient"
     ]
   },
   "mixins": [
@@ -28,7 +31,8 @@
   "depends": {
     "fabricloader": ">=0.7.4",
     "fabric": "*",
-    "minecraft": "1.16.x"
+    "minecraft": "1.16.x",
+    "fabric-key-binding-api-v1": "*"
   },
   "suggests": {
     "another-mod": "*"
