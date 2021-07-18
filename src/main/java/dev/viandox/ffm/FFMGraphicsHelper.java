@@ -118,15 +118,23 @@ public class FFMGraphicsHelper {
     }
 
 
-    public static void drawRoundedRect(MinecraftClient client, float x0, float y0, float x1, float y1, float z, int color, float cs) {
+    public static void drawRoundedRect(MatrixStack matrices, float x0, float y0, float x1, float y1, float z, int color, float cs) {
         int a = color >> 24 & 0xff;
         int r = color >> 16 & 0xff;
         int g = color >> 8  & 0xff;
         int b = color >> 0  & 0xff;
-        drawRoundedRect(client, x0, y0, x1, y1, z, a, r, g, b, cs);
+        drawRoundedRect(matrices, x0, y0, x1, y1, z, a, r, g, b, cs);
     }
 
-    public static void drawRoundedRect(MinecraftClient client, float x0, float y0, float x1, float y1, float z, int a, int r, int g, int b, float cs) {
+    public static void drawSmallRoundedRect(MatrixStack matrices, float x0, float y0, float x1, float y1, float z, int color) {
+        int a = color >> 24 & 0xff;
+        int r = color >> 16 & 0xff;
+        int g = color >> 8  & 0xff;
+        int b = color >> 0  & 0xff;
+        drawSmallRoundedRect(matrices, x0, y0, x1, y1, z, a, r, g, b);
+    }
+
+    public static void drawRoundedRect(MatrixStack matrices, float x0, float y0, float x1, float y1, float z, int a, int r, int g, int b, float cs) {
         // the rectangle is rendered this way, from top to bottom, from left to right
         //   ╭─────┬─────────────────┬─────╮
         //   │  1  │        2        │  3  │
@@ -143,47 +151,48 @@ public class FFMGraphicsHelper {
         //   ╰─────┴─────────────────┴─────╯
 
         // bind rounded corner texture
-        client.getTextureManager().bindTexture(new Identifier("ffm", "corner.png"));
+        MinecraftClient.getInstance().getTextureManager().bindTexture(new Identifier("ffm", "corner.png"));
 
         Tessellator tessellator = Tessellator.getInstance();
         BufferBuilder bufferBuilder = tessellator.getBuffer();
-        bufferBuilder.begin(7, VertexFormats.POSITION_TEXTURE_COLOR);
+        bufferBuilder.begin(7, VertexFormats.POSITION_COLOR_TEXTURE);
         float c = cs;
+        Matrix4f matrix = matrices.peek().getModel();
         // top left corner
-        bufferBuilder.vertex(x0 + c, y0 + 0, z).texture(1.0F, 0.0F).color(r, g, b, a).next();
-        bufferBuilder.vertex(x0 + 0, y0 + 0, z).texture(0.0F, 0.0F).color(r, g, b, a).next();
-        bufferBuilder.vertex(x0 + 0, y0 + c, z).texture(0.0F, 1.0F).color(r, g, b, a).next();
-        bufferBuilder.vertex(x0 + c, y0 + c, z).texture(1.0F, 1.0F).color(r, g, b, a).next();
+        bufferBuilder.vertex(matrix, x0 + c, y0 + 0, z).color(r, g, b, a).texture(1.0F, 0.0F).next();
+        bufferBuilder.vertex(matrix, x0 + 0, y0 + 0, z).color(r, g, b, a).texture(0.0F, 0.0F).next();
+        bufferBuilder.vertex(matrix, x0 + 0, y0 + c, z).color(r, g, b, a).texture(0.0F, 1.0F).next();
+        bufferBuilder.vertex(matrix, x0 + c, y0 + c, z).color(r, g, b, a).texture(1.0F, 1.0F).next();
         // top middle bar
-        bufferBuilder.vertex(x1 - c, y0 + 0, z).texture(0.9F, 0.9F).color(r, g, b, a).next();
-        bufferBuilder.vertex(x0 + c, y0 + 0, z).texture(1.0F, 0.9F).color(r, g, b, a).next();
-        bufferBuilder.vertex(x0 + c, y0 + c, z).texture(1.0F, 1.0F).color(r, g, b, a).next();
-        bufferBuilder.vertex(x1 - c, y0 + c, z).texture(0.9F, 1.0F).color(r, g, b, a).next();
+        bufferBuilder.vertex(matrix, x1 - c, y0 + 0, z).color(r, g, b, a).texture(0.9F, 0.9F).next();
+        bufferBuilder.vertex(matrix, x0 + c, y0 + 0, z).color(r, g, b, a).texture(1.0F, 0.9F).next();
+        bufferBuilder.vertex(matrix, x0 + c, y0 + c, z).color(r, g, b, a).texture(1.0F, 1.0F).next();
+        bufferBuilder.vertex(matrix, x1 - c, y0 + c, z).color(r, g, b, a).texture(0.9F, 1.0F).next();
         // top right corner
-        bufferBuilder.vertex(x1 + 0, y0 + 0, z).texture(0.0F, 0.0F).color(r, g, b, a).next();
-        bufferBuilder.vertex(x1 - c, y0 + 0, z).texture(1.0F, 0.0F).color(r, g, b, a).next();
-        bufferBuilder.vertex(x1 - c, y0 + c, z).texture(1.0F, 1.0F).color(r, g, b, a).next();
-        bufferBuilder.vertex(x1 + 0, y0 + c, z).texture(0.0F, 1.0F).color(r, g, b, a).next();
+        bufferBuilder.vertex(matrix, x1 + 0, y0 + 0, z).color(r, g, b, a).texture(0.0F, 0.0F).next();
+        bufferBuilder.vertex(matrix, x1 - c, y0 + 0, z).color(r, g, b, a).texture(1.0F, 0.0F).next();
+        bufferBuilder.vertex(matrix, x1 - c, y0 + c, z).color(r, g, b, a).texture(1.0F, 1.0F).next();
+        bufferBuilder.vertex(matrix, x1 + 0, y0 + c, z).color(r, g, b, a).texture(0.0F, 1.0F).next();
         /// most of body
-        bufferBuilder.vertex(x1 + 0, y0 + c, z).texture(0.9F, 0.9F).color(r, g, b, a).next();
-        bufferBuilder.vertex(x0 + 0, y0 + c, z).texture(1.0F, 0.9F).color(r, g, b, a).next();
-        bufferBuilder.vertex(x0 + 0, y1 - c, z).texture(1.0F, 1.0F).color(r, g, b, a).next();
-        bufferBuilder.vertex(x1 - 0, y1 - c, z).texture(0.9F, 1.0F).color(r, g, b, a).next();
+        bufferBuilder.vertex(matrix, x1 + 0, y0 + c, z).color(r, g, b, a).texture(0.9F, 0.9F).next();
+        bufferBuilder.vertex(matrix, x0 + 0, y0 + c, z).color(r, g, b, a).texture(1.0F, 0.9F).next();
+        bufferBuilder.vertex(matrix, x0 + 0, y1 - c, z).color(r, g, b, a).texture(1.0F, 1.0F).next();
+        bufferBuilder.vertex(matrix, x1 - 0, y1 - c, z).color(r, g, b, a).texture(0.9F, 1.0F).next();
         // bottom left corner
-        bufferBuilder.vertex(x0 + c, y1 - c, z).texture(1.0F, 1.0F).color(r, g, b, a).next();
-        bufferBuilder.vertex(x0 + 0, y1 - c, z).texture(0.0F, 1.0F).color(r, g, b, a).next();
-        bufferBuilder.vertex(x0 + 0, y1 + 0, z).texture(0.0F, 0.0F).color(r, g, b, a).next();
-        bufferBuilder.vertex(x0 + c, y1 + 0, z).texture(1.0F, 0.0F).color(r, g, b, a).next();
+        bufferBuilder.vertex(matrix, x0 + c, y1 - c, z).color(r, g, b, a).texture(1.0F, 1.0F).next();
+        bufferBuilder.vertex(matrix, x0 + 0, y1 - c, z).color(r, g, b, a).texture(0.0F, 1.0F).next();
+        bufferBuilder.vertex(matrix, x0 + 0, y1 + 0, z).color(r, g, b, a).texture(0.0F, 0.0F).next();
+        bufferBuilder.vertex(matrix, x0 + c, y1 + 0, z).color(r, g, b, a).texture(1.0F, 0.0F).next();
         // bottom middle bar
-        bufferBuilder.vertex(x1 - c, y1 - c, z).texture(1.0F, 1.0F).color(r, g, b, a).next();
-        bufferBuilder.vertex(x0 + c, y1 - c, z).texture(0.9F, 1.0F).color(r, g, b, a).next();
-        bufferBuilder.vertex(x0 + c, y1 + 0, z).texture(0.9F, 0.9F).color(r, g, b, a).next();
-        bufferBuilder.vertex(x1 - c, y1 + 0, z).texture(1.0F, 0.9F).color(r, g, b, a).next();
+        bufferBuilder.vertex(matrix, x1 - c, y1 - c, z).color(r, g, b, a).texture(1.0F, 1.0F).next();
+        bufferBuilder.vertex(matrix, x0 + c, y1 - c, z).color(r, g, b, a).texture(0.9F, 1.0F).next();
+        bufferBuilder.vertex(matrix, x0 + c, y1 + 0, z).color(r, g, b, a).texture(0.9F, 0.9F).next();
+        bufferBuilder.vertex(matrix, x1 - c, y1 + 0, z).color(r, g, b, a).texture(1.0F, 0.9F).next();
         // bottom right corner
-        bufferBuilder.vertex(x1 + 0, y1 - c, z).texture(0.0F, 1.0F).color(r, g, b, a).next();
-        bufferBuilder.vertex(x1 - c, y1 - c, z).texture(1.0F, 1.0F).color(r, g, b, a).next();
-        bufferBuilder.vertex(x1 - c, y1 + 0, z).texture(1.0F, 0.0F).color(r, g, b, a).next();
-        bufferBuilder.vertex(x1 + 0, y1 + 0, z).texture(0.0F, 0.0F).color(r, g, b, a).next();
+        bufferBuilder.vertex(matrix, x1 + 0, y1 - c, z).color(r, g, b, a).texture(0.0F, 1.0F).next();
+        bufferBuilder.vertex(matrix, x1 - c, y1 - c, z).color(r, g, b, a).texture(1.0F, 1.0F).next();
+        bufferBuilder.vertex(matrix, x1 - c, y1 + 0, z).color(r, g, b, a).texture(1.0F, 0.0F).next();
+        bufferBuilder.vertex(matrix, x1 + 0, y1 + 0, z).color(r, g, b, a).texture(0.0F, 0.0F).next();
 
 
         RenderSystem.enableDepthTest();
@@ -193,19 +202,79 @@ public class FFMGraphicsHelper {
         RenderSystem.disableBlend();
     }
 
-    public static void makeBufferBuilderRegularPolygon(BufferBuilder bufferBuilder, float radius, int sides, float cx, float cy, int z, int a, int r, int g, int b) {
-        bufferBuilder.begin(7, VertexFormats.POSITION_COLOR);
-        double sideAngle = 2*Math.PI / sides;
-        for(int i = sides - 1; i >= 0; i--) {
-            double angle = i * sideAngle;
-            double x = cx + Math.cos(angle) * radius;
-            double y = cy + Math.sin(angle) * radius;
+    public static void drawSmallRoundedRect(MatrixStack matrices, float x0, float y0, float x1, float y1, float z, int a, int r, int g, int b) {
+        // the rectangle is rendered this way
+        //   ╭─────┬─────╮
+        //   │  1  │  2  │
+        //   ├─────┼─────┤
+        //   │  3  │  4  │
+        //   ╰─────┴─────╯
+        MinecraftClient.getInstance().getTextureManager().bindTexture(new Identifier("ffm", "corner.png"));
 
-            System.out.println(x + ", " + y);
+        Tessellator tessellator = Tessellator.getInstance();
+        BufferBuilder bufferBuilder = tessellator.getBuffer();
+        bufferBuilder.begin(7, VertexFormats.POSITION_COLOR_TEXTURE);
+        float cx = (x1 - x0) / 2;
+        float cy = (y1 - y0) / 2;
+        Matrix4f matrix = matrices.peek().getModel();
+        // top left corner
+        bufferBuilder.vertex(matrix, x0 + cx, y0 +  0, z).color(r, g, b, a).texture(1.0F, 0.0F).next();
+        bufferBuilder.vertex(matrix, x0 +  0, y0 +  0, z).color(r, g, b, a).texture(0.0F, 0.0F).next();
+        bufferBuilder.vertex(matrix, x0 +  0, y0 + cy, z).color(r, g, b, a).texture(0.0F, 1.0F).next();
+        bufferBuilder.vertex(matrix, x0 + cx, y0 + cy, z).color(r, g, b, a).texture(1.0F, 1.0F).next();
+        // top right corner
+        bufferBuilder.vertex(matrix, x1 +  0, y0 +  0, z).color(r, g, b, a).texture(0.0F, 0.0F).next();
+        bufferBuilder.vertex(matrix, x1 - cx, y0 +  0, z).color(r, g, b, a).texture(1.0F, 0.0F).next();
+        bufferBuilder.vertex(matrix, x1 - cx, y0 + cy, z).color(r, g, b, a).texture(1.0F, 1.0F).next();
+        bufferBuilder.vertex(matrix, x1 +  0, y0 + cy, z).color(r, g, b, a).texture(0.0F, 1.0F).next();
+        // bottom left corner
+        bufferBuilder.vertex(matrix, x0 + cx, y1 - cy, z).color(r, g, b, a).texture(1.0F, 1.0F).next();
+        bufferBuilder.vertex(matrix, x0 +  0, y1 - cy, z).color(r, g, b, a).texture(0.0F, 1.0F).next();
+        bufferBuilder.vertex(matrix, x0 +  0, y1 +  0, z).color(r, g, b, a).texture(0.0F, 0.0F).next();
+        bufferBuilder.vertex(matrix, x0 + cx, y1 +  0, z).color(r, g, b, a).texture(1.0F, 0.0F).next();
+        // bottom right corner
+        bufferBuilder.vertex(matrix, x1 +  0, y1 - cy, z).color(r, g, b, a).texture(0.0F, 1.0F).next();
+        bufferBuilder.vertex(matrix, x1 - cx, y1 - cy, z).color(r, g, b, a).texture(1.0F, 1.0F).next();
+        bufferBuilder.vertex(matrix, x1 - cx, y1 +  0, z).color(r, g, b, a).texture(1.0F, 0.0F).next();
+        bufferBuilder.vertex(matrix, x1 +  0, y1 +  0, z).color(r, g, b, a).texture(0.0F, 0.0F).next();
 
-            bufferBuilder.vertex(x, y, z).color(r, g, b, a).next();
-        }
         bufferBuilder.end();
+
+        RenderSystem.enableDepthTest();
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+        BufferRenderer.draw(bufferBuilder);
+        RenderSystem.disableBlend();
+    }
+
+    public static void drawCheckerboardQuad(MatrixStack matrices, float patternSize, float x, float y, float w, float h, float z, int color1, int color2) {
+        Tessellator tessellator = Tessellator.getInstance();
+        BufferBuilder bufferBuilder = tessellator.getBuffer();
+        MinecraftClient.getInstance().getTextureManager().bindTexture(new Identifier("ffm", "checkerboard.png"));
+        bufferBuilder.begin(7, VertexFormats.POSITION_COLOR_TEXTURE);
+        Matrix4f matrix = matrices.peek().getModel();
+        int[] c1 = ColorConverter.INTtoRGBA(color1);
+        int[] c2 = ColorConverter.INTtoRGBA(color2);
+
+        bufferBuilder.vertex(matrix, x + w, y + 0, z).color(c1[0], c1[1], c1[2], c1[3]).texture(1.0f, 0.0f).next();
+        bufferBuilder.vertex(matrix, x + 0, y + 0, z).color(c1[0], c1[1], c1[2], c1[3]).texture(0.9f, 0.0f).next();
+        bufferBuilder.vertex(matrix, x + 0, y + h, z).color(c1[0], c1[1], c1[2], c1[3]).texture(0.9f, 0.1f).next();
+        bufferBuilder.vertex(matrix, x + w, y + h, z).color(c1[0], c1[1], c1[2], c1[3]).texture(1.0f, 0.1f).next();
+
+        float a = w / patternSize;
+        float b = h / patternSize;
+
+        bufferBuilder.vertex(matrix, x + w, y + 0, z).color(c2[0], c2[1], c2[2], c2[3]).texture(a + 0, 0.00f).next();
+        bufferBuilder.vertex(matrix, x + 0, y + 0, z).color(c2[0], c2[1], c2[2], c2[3]).texture(0.00f, 0.00f).next();
+        bufferBuilder.vertex(matrix, x + 0, y + h, z).color(c2[0], c2[1], c2[2], c2[3]).texture(0.00f, b + 0).next();
+        bufferBuilder.vertex(matrix, x + w, y + h, z).color(c2[0], c2[1], c2[2], c2[3]).texture(a + 0, b + 0).next();
+
+        bufferBuilder.end();
+
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+        RenderSystem.enableTexture();
+        BufferRenderer.draw(bufferBuilder);
     }
 
     public static void drawOutlinedText(TextRenderer textRenderer, MatrixStack matrices, Text txt, float x, float y, int color, int outlineColor) {

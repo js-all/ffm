@@ -3,6 +3,7 @@ package dev.viandox.ffm.gui;
 import com.ibm.icu.impl.coll.Collation;
 import com.mojang.blaze3d.systems.RenderSystem;
 import dev.viandox.ffm.ColorConverter;
+import dev.viandox.ffm.FFMGraphicsHelper;
 import dev.viandox.ffm.config.Config;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.widget.ButtonWidget;
@@ -53,74 +54,10 @@ public class FFMButtonWidget extends ButtonWidget {
                     (float) f));
         }
 
-        int ca = color >> 24;
-        int cr = color >> 16 & 0xff;
-        int cg = color >> 8 & 0xff;
-        int cb = color & 0xff;
-
-        // buttons will be rendered like so (each square is a different quad)
-        //    ╭──┬───────────────────────┬──╮
-        //    ├──┤                       ├──┤
-        //    ├──┤                       ├──┤
-        //    ╰──┴───────────────────────┴──╯
-
-        MinecraftClient client = MinecraftClient.getInstance();
-        client.getTextureManager().bindTexture(new Identifier("ffm", "corner.png"));
-
-        Tessellator tessellator = Tessellator.getInstance();
-        BufferBuilder bufferBuilder = tessellator.getBuffer();
-
-        // cs = cornerSize
-        float cs = 8;
-        float z = 0;
-        int w = x + width;
-        int h = y + height;
-        Matrix4f matrix = matrices.peek().getModel();
-        bufferBuilder.begin(7, VertexFormats.POSITION_COLOR_TEXTURE);
-        // top left corner
-        bufferBuilder.vertex(matrix, x + cs, y +  0, 0).color(cr, cg, cb, ca).texture(1.0f, 0.0f).next();
-        bufferBuilder.vertex(matrix, x +  0, y +  0, 0).color(cr, cg, cb, ca).texture(0.0f, 0.0f).next();
-        bufferBuilder.vertex(matrix, x +  0, y + cs, 0).color(cr, cg, cb, ca).texture(0.0f, 1.0f).next();
-        bufferBuilder.vertex(matrix, x + cs, y + cs, 0).color(cr, cg, cb, ca).texture(1.0f, 1.0f).next();
-        // top right corner
-        bufferBuilder.vertex(matrix, w +  0, y +  0, 0).color(cr, cg, cb, ca).texture(0.0f, 0.0f).next();
-        bufferBuilder.vertex(matrix, w - cs, y +  0, 0).color(cr, cg, cb, ca).texture(1.0f, 0.0f).next();
-        bufferBuilder.vertex(matrix, w - cs, y + cs, 0).color(cr, cg, cb, ca).texture(1.0f, 1.0f).next();
-        bufferBuilder.vertex(matrix, w +  0, y + cs, 0).color(cr, cg, cb, ca).texture(0.0f, 1.0f).next();
-        // bottom left corner
-        bufferBuilder.vertex(matrix, x + cs, h - cs, 0).color(cr, cg, cb, ca).texture(1.0f, 1.0f).next();
-        bufferBuilder.vertex(matrix, x +  0, h - cs, 0).color(cr, cg, cb, ca).texture(0.0f, 1.0f).next();
-        bufferBuilder.vertex(matrix, x +  0, h +  0, 0).color(cr, cg, cb, ca).texture(0.0f, 0.0f).next();
-        bufferBuilder.vertex(matrix, x + cs, h +  0, 0).color(cr, cg, cb, ca).texture(1.0f, 0.0f).next();
-        // bottom right corner
-        bufferBuilder.vertex(matrix, w +  0, h - cs, 0).color(cr, cg, cb, ca).texture(0.0f, 1.0f).next();
-        bufferBuilder.vertex(matrix, w - cs, h - cs, 0).color(cr, cg, cb, ca).texture(1.0f, 1.0f).next();
-        bufferBuilder.vertex(matrix, w - cs, h +  0, 0).color(cr, cg, cb, ca).texture(1.0f, 0.0f).next();
-        bufferBuilder.vertex(matrix, w +  0, h +  0, 0).color(cr, cg, cb, ca).texture(0.0f, 0.0f).next();
-        // left middle piece                                                              0.9 here to get a solid color
-        bufferBuilder.vertex(matrix, x + cs, y + cs, 0).color(cr, cg, cb, ca).texture(1.0f, 0.9f).next();
-        bufferBuilder.vertex(matrix, x +  0, y + cs, 0).color(cr, cg, cb, ca).texture(0.9f, 0.9f).next();
-        bufferBuilder.vertex(matrix, x +  0, h - cs, 0).color(cr, cg, cb, ca).texture(0.9f, 1.0f).next();
-        bufferBuilder.vertex(matrix, x + cs, h - cs, 0).color(cr, cg, cb, ca).texture(1.0f, 1.0f).next();
-        // right middle piece
-        bufferBuilder.vertex(matrix, w +  0, y + cs, 0).color(cr, cg, cb, ca).texture(1.0f, 0.9f).next();
-        bufferBuilder.vertex(matrix, w - cs, y + cs, 0).color(cr, cg, cb, ca).texture(0.9f, 0.9f).next();
-        bufferBuilder.vertex(matrix, w - cs, h - cs, 0).color(cr, cg, cb, ca).texture(0.9f, 1.0f).next();
-        bufferBuilder.vertex(matrix, w +  0, h - cs, 0).color(cr, cg, cb, ca).texture(1.0f, 1.0f).next();
-        // body
-        bufferBuilder.vertex(matrix, w - cs, y +  0, 0).color(cr, cg, cb, ca).texture(1.0f, 0.9f).next();
-        bufferBuilder.vertex(matrix, x + cs, y +  0, 0).color(cr, cg, cb, ca).texture(0.9f, 0.9f).next();
-        bufferBuilder.vertex(matrix, x + cs, h +  0, 0).color(cr, cg, cb, ca).texture(0.9f, 1.0f).next();
-        bufferBuilder.vertex(matrix, w - cs, h +  0, 0).color(cr, cg, cb, ca).texture(1.0f, 1.0f).next();
-
-        bufferBuilder.end();
-        RenderSystem.enableBlend();
-        RenderSystem.defaultBlendFunc();
-        RenderSystem.enableTexture();
-        BufferRenderer.draw(bufferBuilder);
+        FFMGraphicsHelper.drawRoundedRect(matrices, x, y, x + width, y+ height, 0, color, 9);
 
         drawCenteredText(matrices,
-                client.textRenderer,
+                MinecraftClient.getInstance().textRenderer,
                 this.getMessage(),
                 this.x + this.width / 2,
                 this.y + (this.height - 8) / 2,

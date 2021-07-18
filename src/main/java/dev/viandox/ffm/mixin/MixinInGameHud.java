@@ -149,7 +149,7 @@ public abstract class MixinInGameHud {
                 for(int i = 0; i < ActionBarScrapper.maxCharges; i++) {
                     int color = i < ActionBarScrapper.charges ? 0xffffffff : 0xaa000000;
                     FFMGraphicsHelper.drawRoundedRect(
-                            client,
+                            matrices,
                             this.scaledWidth / 2 + 94 + i * (chargesSize + margins),
                             this.scaledHeight - margins - chargesSize,
                             this.scaledWidth / 2 + 94 + i * (chargesSize + margins) + chargesSize,
@@ -180,7 +180,7 @@ public abstract class MixinInGameHud {
                 float half_text_width = (float) (textWidth / 2.0);
                 float margins = 5;
                 FFMGraphicsHelper.drawRoundedRect(
-                        client,
+                        matrices,
                         (float) (0.75 * this.scaledWidth - half_text_width - margins),
                         (float) (this.scaledHeight + 0 - fac * height),
                         (float) (0.75 * this.scaledWidth + half_text_width + margins),
@@ -206,7 +206,7 @@ public abstract class MixinInGameHud {
                     textWidth = Math.max(textWidth, textRenderer.getWidth(entry.getKey() + ": " + entry.getValue()));
                 }
                 textWidth += paddingLeft;
-                FFMGraphicsHelper.drawRoundedRect(client,
+                FFMGraphicsHelper.drawRoundedRect(matrices,
                         marginLeft - cornerSize,
                         marginTop - cornerSize,
                         marginLeft + textWidth + cornerSize,

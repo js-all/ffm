@@ -1030,6 +1030,14 @@ public class ColorConverter {
         return LABtoRGB(lab[0], lab[1], lab[2], tristimulus);
     }
 
+    public static int[] RGBAtoRGB(int[] rgba) {
+        return new int[] {rgba[0], rgba[1], rgba[2]};
+    }
+
+    public static int[] RGBtoRGBA(int[] rgb, int alpha) {
+        return new int[] {rgb[0], rgb[1], rgb[2], alpha};
+    }
+
     /**
      * clamp an rgb color with all channel from 0 to 255
      * @param rgb the rgb color
@@ -1049,6 +1057,15 @@ public class ColorConverter {
                 RGBtoLCH(rgb2[0], rgb2[1], rgb2[2], CIE2_D65),
                 f);
         return LCHtoRGB(lch[0], lch[1], lch[2], CIE2_D65);
+    }
+
+    public static int[] lerpRGBA(int[] rgba1, int[] rgba2, float f) {
+        int[] rgb = lerpRGB(
+                RGBAtoRGB(rgba1),
+                RGBAtoRGB(rgba2),
+                f
+        );
+        return RGBtoRGBA(rgb, (int) (rgba1[3] + f * (rgba2[3] - rgba1[3])));
     }
 
     public static float[] lerpLCH(float[] lch1, float[] lch2, float f) {
@@ -1072,8 +1089,13 @@ public class ColorConverter {
     public static int[] INTtoRGB(int color) {
         return new int[] {color >> 16 & 0xff, color >> 8 & 0xff, color & 0xff};
     }
-
+    public static int[] INTtoRGBA(int color) {
+        return new int[] {color >> 16 & 0xff, color >> 8 & 0xff, color & 0xff, color >> 24 & 0xff};
+    }
+    public static int RGBAtoINT(int[] rgba) {
+        return ((rgba[3] & 0xff) << 24)|((rgba[0] & 0xff) << 16)|((rgba[1] & 0xff) << 8)|(rgba[2] & 0xff);
+    }
     public static int RGBtoINT(int[] rgb) {
-        return ((0xff << 8 | rgb[0]) << 8 | rgb[1]) << 8 | rgb[2];
+        return ((rgb[0] & 0xff) << 16)|((rgb[1] & 0xff) << 8)|(rgb[2] & 0xff);
     }
 }
