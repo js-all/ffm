@@ -5,31 +5,31 @@ import dev.viandox.ffm.FFMUtils;
 import java.time.Duration;
 import java.util.function.Function;
 
-public class InterpolableNumber<T extends Number> extends Interpolable<T> {
-    public InterpolableNumber(T value, Duration transitionDuration, Function<Double, Double> timingFunction) {
+public class InterpolableDouble extends Interpolable<Double> {
+    public InterpolableDouble(double value, Duration transitionDuration, Function<Double, Double> timingFunction) {
         super(value, transitionDuration, timingFunction);
     }
 
-    public static <A extends Number> InterpolableNumber<A> linear(A value, Duration transitionDuration) {
-        return new InterpolableNumber<A>(value, transitionDuration, t -> t);
+    public static InterpolableDouble linear(double value, Duration transitionDuration) {
+        return new InterpolableDouble(value, transitionDuration, t -> t);
     }
-    public static <A extends Number> InterpolableNumber<A> linear(A value) {
-        return new InterpolableNumber<A>(value, t -> t);
+    public static InterpolableDouble linear(double value) {
+        return new InterpolableDouble(value, t -> t);
     }
-    public static <A extends Number> InterpolableNumber<A> easeInOut(A value, Duration transitionDuration) {
-        return new InterpolableNumber<A>(value, transitionDuration, FFMUtils::easeInOut);
+    public static InterpolableDouble easeInOut(double value, Duration transitionDuration) {
+        return new InterpolableDouble(value, transitionDuration, FFMUtils::easeInOut);
     }
-    public static <A extends Number> InterpolableNumber<A> easeInOut(A value) {
-        return new InterpolableNumber<A>(value, FFMUtils::easeInOut);
+    public static InterpolableDouble easeInOut(double value) {
+        return new InterpolableDouble(value, FFMUtils::easeInOut);
     }
 
-    public InterpolableNumber(T value, Function<Double, Double> timingFunction) {
+    public InterpolableDouble(double value, Function<Double, Double> timingFunction) {
         super(value, timingFunction);
     }
 
     @Override
-    protected T lerp(double f) {
+    protected Double lerp(double f) {
         // disgusting, truly
-        return (T) (Double.valueOf(oldValue.doubleValue() + f * (value.doubleValue() - oldValue.doubleValue())));
+        return oldValue + f * (value - oldValue);
     }
 }

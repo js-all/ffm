@@ -1,5 +1,6 @@
-package dev.viandox.ffm;
+package dev.viandox.ffm.interpolation;
 
+import dev.viandox.ffm.FFMUtils;
 import dev.viandox.ffm.config.Config;
 
 import java.time.Duration;
@@ -7,8 +8,8 @@ import java.time.Instant;
 import java.util.function.Function;
 
 public abstract class Interpolable<T> {
-    private T oldValue;
-    private T value;
+    protected T oldValue;
+    protected T value;
     private final Function<Double, Double> timingFunction;
     private final Duration transitionDuration;
     private Instant lastChange = Instant.ofEpochMilli(0);
@@ -26,30 +27,25 @@ public abstract class Interpolable<T> {
         this.transitionDuration = Config.transitionDuration;
     }
 
-    public static <A> Interpolable<A> linear(A value, Duration transitionDuration) {
-        return new Interpolable<A>(value, transitionDuration, t -> t);
-    }
-    public static <A> Interpolable<A> linear(A value) {
-        return new Interpolable<A>(value, t -> t);
-    }
-    public static <A> Interpolable<A> easeInOut(A value, Duration transitionDuration) {
-        return new Interpolable<A>(value, transitionDuration, FFMUtils::easeInOut);
-    }
-    public static <A> Interpolable<A> easeInOut(A value) {
-        return new Interpolable<A>(value, FFMUtils::easeInOut);
-    }
-
     public void set(T value) {
-        this.oldValue = this.value;
+        this.oldValue = this.get();
         this.value = value;
         this.lastChange = Instant.now();
     }
 
+    public void setWithoutInterpolation(T value) {
+        this.oldValue = value;
+        this.set(value);
+    }
+
     abstract protected T lerp(double f);
 
-    public T get() {
+    public double getInterpolationProgress() {
         double f = (((double) Instant.now().toEpochMilli()) - ((double) this.lastChange.toEpochMilli())) / this.transitionDuration.toMillis();
-        f = Math.min(f, 1d);
-        return this.lerp(timingFunction.apply(f));
+        return Math.min(f, 1d);
+    }
+
+    public T get() {
+        return this.lerp(timingFunction.apply(this.getInterpolationProgress()));
     }
 }

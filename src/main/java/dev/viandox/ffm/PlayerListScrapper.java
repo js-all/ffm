@@ -47,10 +47,8 @@ public class PlayerListScrapper {
 //        }
         if(data.containsKey("Profile")) bank = FFMUtils.parseSuffixedNumber(data.get("Profile").get("Bank"));
         if(data.containsKey("Skills")) speed = Integer.parseInt(data.get("Skills").get("Speed").replaceAll("[^0-9]", ""));
-        if(data.containsKey("Commissions")) {
-            hasCommissions = true;
-            commissions = data.get("Commissions");
-        };
+        if(data.containsKey("Commissions")) commissions = data.get("Commissions");
+        hasCommissions = data.containsKey("Commissions");
         if(data.containsKey("Area")) area = data.get("Area").get("__value");
     }
 

@@ -43,6 +43,7 @@ public class MixinGenericContainerScreen {
         - render the regular texture
         - render one by one the non-slots
         */
+        // isn't that done ? ↑
 
         List<Slot> removedSlots = d.getScreenHandler().slots.stream().filter(s -> FFMUtils.isItemStackBackgroundGlassPane(s.getStack())).collect(Collectors.toList());
         Tessellator tessellator = Tessellator.getInstance();

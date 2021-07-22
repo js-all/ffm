@@ -315,88 +315,91 @@ public class ColorConverter {
      * @return HSV color space.
      */
     public static float[] RGBtoHSV(int red, int green, int blue){
+        float R = ((float)red / 255);
+        float G = ((float)green / 255);
+        float B = ((float)blue / 255);
         float[] hsv = new float[3];
-        float r = red / 255f;
-        float g = green / 255f;
-        float b = blue / 255f;
-        
-        float max = Math.max(r, Math.max(g, b));
-        float min = Math.min(r, Math.min(g, b));
-        float delta = max - min;
-        
-        // Hue
-        if (max == min){
-            hsv[0] = 0;
-        }
-        else if (max == r){
-            hsv[0] = ((g - b) / delta) * 60f;
-        }
-        else if (max == g){
-            hsv[0] = ((b - r) / delta + 2f) * 60f;
-        }
-        else if (max == b){
-            hsv[0] = ((r - g) / delta + 4f) * 60f;
-        }
-        
-        // Saturation
-        if (delta == 0)
-            hsv[1] = 0;
-        else
-            hsv[1] = delta / max;
-        
-        //Value
+
+        float min = Math.min(Math.min(R, G), B); //Min. value of RGB
+        float max = Math.max(Math.max(R, G), B); //Max. value of RGB
+        float delta_max = max - min;             //Delta RGB value
+
         hsv[2] = max;
-        
+
+        if (delta_max == 0) { //This is a gray, no chroma...
+            hsv[0] = 0;
+            hsv[1] = 0;
+        } else { //Chromatic data...
+            hsv[1] = delta_max / max;
+
+            float delta_R = (((max - R) / 6) + (delta_max / 2)) / delta_max;
+            float delta_G = (((max - G) / 6) + (delta_max / 2)) / delta_max;
+            float delta_B = (((max - B) / 6) + (delta_max / 2)) / delta_max;
+
+            if      (R == max) hsv[0] = delta_B - delta_G;
+            else if (G == max) hsv[0] = (1f / 3) + delta_R - delta_B;
+            else if (B == max) hsv[0] = (2f / 3) + delta_G - delta_R;
+
+            if ( hsv[0] < 0 ) hsv[0]++;
+            if ( hsv[0] > 1 ) hsv[0]--;
+        }
         return hsv;
     }
     
     /**
      * HSV -> RGB.
-     * @param hue Hue.
+     * @param hue Hue. In the range[0..1]
      * @param saturation Saturation. In the range[0..1].
      * @param value Value. In the range[0..1].
      * @return RGB color space. In the range[0..255].
      */
     public static int[] HSVtoRGB(float hue, float saturation, float value){
+        // rewritten by me, bc original code took hue [-180..180] and that sucks
+        // i love you https://www.easyrgb.com/en/math.php, really
         int[] rgb = new int[3];
-        
-        float hi = (float)Math.floor(hue / 60.0) % 6;
-        float f =  (float)((hue / 60.0) - Math.floor(hue / 60.0));
-        float p = (float)(value * (1.0 - saturation));
-        float q = (float)(value * (1.0 - (f * saturation)));
-        float t = (float)(value * (1.0 - ((1.0 - f) * saturation)));
-        
-        if (hi == 0){
+        if (saturation == 0) {
             rgb[0] = (int)(value * 255);
-            rgb[1] = (int)(t * 255);
-            rgb[2] = (int)(p * 255);
-        }
-        else if (hi == 1){
-            rgb[0] = (int)(q * 255);
             rgb[1] = (int)(value * 255);
-            rgb[2] = (int)(p * 255);
+            rgb[2] = (int)(value * 255);
+        } else {
+            float h = hue * 6;
+            if ( h == 6 ) h = 0; //H must be < 1
+            int i = (int) Math.floor(h);
+            float p = value * (1 - saturation);
+            float q = value * (1 - saturation * (h - i));
+            float t = value * (1 - saturation * (1 - (h - i)));
+            float r, g, b;
+
+            if      (i == 0) {
+                r = value;
+                g = t;
+                b = p;
+            }else if (i == 1) {
+                r = q;
+                g = value;
+                b = p;
+            }else if (i == 2) {
+                r = p;
+                g = value;
+                b = t;
+            }else if (i == 3) {
+                r = p;
+                g = q;
+                b = value;
+            }else if (i == 4) {
+                r = t;
+                g = p;
+                b = value;
+            } else {
+                r = value;
+                g = p;
+                b = q;
+            }
+
+            rgb[0] = (int)(r * 255);
+            rgb[1] = (int)(g * 255);
+            rgb[2] = (int)(b * 255);
         }
-        else if (hi == 2){
-            rgb[0] = (int)(p * 255);
-            rgb[1] = (int)(value * 255);
-            rgb[2] = (int)(t * 255);
-        }
-        else if (hi == 3){
-            rgb[0] = (int)(p * 255);
-            rgb[1] = (int)(value * 255);
-            rgb[2] = (int)(q * 255);
-        }
-        else if (hi == 4){
-            rgb[0] = (int)(t * 255);
-            rgb[1] = (int)(value * 255);
-            rgb[2] = (int)(p * 255);
-        }
-        else if (hi == 5){
-            rgb[0] = (int)(value * 255);
-            rgb[1] = (int)(p * 255);
-            rgb[2] = (int)(q * 255);
-        }
-        
         return rgb;
     }
     

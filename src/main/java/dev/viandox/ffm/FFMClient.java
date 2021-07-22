@@ -30,6 +30,7 @@ public class FFMClient implements ClientModInitializer {
             }
             wasOpenFastMenuPressed = openfastmenu.isPressed();
             if(openOptions.wasPressed()) {
+                // disabling for now
                 MinecraftClient.getInstance().openScreen(new SettingScreen());
             }
         });

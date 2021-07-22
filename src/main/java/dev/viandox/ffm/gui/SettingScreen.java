@@ -16,10 +16,10 @@ public class SettingScreen extends Screen {
         this.addButton(new FFMButtonWidget(20, 20, 100, 20, Text.of("button"), (button) -> {
 
         }));
-        this.addButton(new FFMSliderWidget(20, 50, 100, 20, Text.of("aaaa"), 0.5, (slider, value) -> {
+        this.addButton(new FFMSliderWidget(20, 50, 100, 5, Text.of("aaaa"), 0.5, (slider, value) -> {
             System.out.println(value);
-        }, false));
-        this.addButton(new FFMColorPickerWidget(200, 200, 20, 20, Text.of(""), 0xffff0000, true));
+        }));
+        this.addButton(new FFMColorPickerWidget(200, 200, 20, 20, Text.of(""), 0xfff542aa, true, (a, b) -> {}));
     }
 
     public void render(MatrixStack matrices, int mouseX, int mouseY, float delta) {

@@ -4,7 +4,8 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import dev.viandox.ffm.ColorConverter;
 import dev.viandox.ffm.FFMGraphicsHelper;
 import dev.viandox.ffm.FFMUtils;
-import dev.viandox.ffm.config.Config;
+import dev.viandox.ffm.interpolation.InterpolableColor;
+import dev.viandox.ffm.interpolation.InterpolableFloat;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.widget.AbstractButtonWidget;
 import net.minecraft.client.render.BufferBuilder;
@@ -17,26 +18,35 @@ import net.minecraft.util.Identifier;
 import net.minecraft.util.math.Matrix4f;
 import org.lwjgl.opengl.GL11;
 
-import java.time.Instant;
+import java.util.function.BiConsumer;
 
 public class FFMColorPickerWidget extends AbstractButtonWidget {
-    private int colorPickerWidth = 130;
-    private int colorPickerHeight = 111;
-    private float[] value;
+    // its really just the big rect dimensions
+    private final int colorPickerWidth = 130;
+    private final int colorPickerHeight = 111;
+    // the actual value, in HSV
+    private final float[] value;
     private float alpha;
-    private boolean hasAlpha;
+    private final boolean hasAlpha;
     private boolean open = false;
-    private boolean wasOpen = false;
+    // to know when it changes
     private boolean wasHovered = false;
-    private Instant lastHoveredStateChange = Instant.ofEpochMilli(0);
-    private Instant lastOpenStateChange = Instant.ofEpochMilli(0);
+    // can be "saturationValue" "hue" or "alpha" to know when the click started
+    // to figure which component to update on mouse drag
     private String lastMouseClickLocation = null;
-    public FFMColorPickerWidget(int x, int y, int width, int height, Text message, int value, boolean alpha) {
+    // by how much the picker is shifted (for the transition when opened)
+    private final InterpolableFloat pickerShift = InterpolableFloat.easeInOut(50f);
+    private final InterpolableFloat pickerOpacity = InterpolableFloat.easeInOut(0f);
+    private final InterpolableColor borderColor = InterpolableColor.easeInOut(0x00000000);
+    private final BiConsumer<FFMColorPickerWidget, Integer> onChange;
+
+    public FFMColorPickerWidget(int x, int y, int width, int height, Text message, int value, boolean alpha, BiConsumer<FFMColorPickerWidget, Integer> onChange) {
         super(x, y, width, height, message);
-        int[] rgb = ColorConverter.INTtoRGB(value);
-        this.alpha = (float) (value >> 24 & 0xff) / 255;
+        int[] rgba = ColorConverter.INTtoRGBA(value);
+        this.alpha = (float) (rgba[3]) / 255;
         this.hasAlpha = alpha;
-        this.value = ColorConverter.RGBtoHSV(rgb[0], rgb[1], rgb[2]);
+        this.value = ColorConverter.RGBtoHSV(rgba[0], rgba[1], rgba[2]);
+        this.onChange = onChange;
     }
 
     public int getValue() {
@@ -51,39 +61,22 @@ public class FFMColorPickerWidget extends AbstractButtonWidget {
     @Override
     public void renderButton(MatrixStack matrices, int mouseX, int mouseY, float delta) {
         if(wasHovered != this.isHovered()) {
-            this.lastHoveredStateChange = Instant.now();
+            if(this.isHovered()) this.borderColor.set(0x55dddddd);
+            else this.borderColor.set(0x00000000);
         }
-        if(wasOpen != open) {
-            this.lastOpenStateChange = Instant.now();
-        }
-        double now = Instant.now().toEpochMilli();
-        double diff = now - lastHoveredStateChange.toEpochMilli();
-        // how much of the transition are we at (0 -> 1)
-        double f = FFMUtils.easeInOut(Math.min(diff / Config.transitionDuration.toMillis(), 1));
-        if (!this.isHovered()) f = 1 - f;
-
-        int borderColor = ColorConverter.RGBAtoINT(ColorConverter.lerpRGBA(
-                    ColorConverter.INTtoRGBA(0),
-                    ColorConverter.INTtoRGBA(0x55dddddd),
-                    (float) f));
-
-        diff = now - lastOpenStateChange.toEpochMilli();
-        f = FFMUtils.easeInOut(Math.min(diff / Config.transitionDuration.toMillis(), 1));
-        if(!open) f = 1 - f;
 
         matrices.push();
-        matrices.translate(50 * (1-f), 0, 0);
+        matrices.translate(pickerShift.get(), 0, 0);
 
         // just to be sure
         MinecraftClient.getInstance().getTextureManager().bindTexture(new Identifier("ffm", "pixel.png"));
-
-        if (f > 0) {
-            RenderSystem.color4f(1f, 1f, 1f, (float) f);
+        // we check interpolation progress because this.open is set at once, and this hits 0 after when the transition is finished
+        if (pickerOpacity.getInterpolationProgress() > 0) {
             RenderSystem.disableTexture();
             RenderSystem.enableBlend();
             RenderSystem.disableAlphaTest();
             RenderSystem.defaultBlendFunc();
-            RenderSystem.shadeModel(7425);
+            RenderSystem.shadeModel(7425); // shadeModel GL_SMOOTH (for gradients)
 
             FFMUtils.BoundingBox saturationValue = this.getSVAreaBB();
             FFMUtils.BoundingBox hue = this.getHSliderBB();
@@ -92,22 +85,21 @@ public class FFMColorPickerWidget extends AbstractButtonWidget {
             this.drawSaturationLightnessArea(matrices,
                     (int) saturationValue.x0, (int) saturationValue.y0,
                     (int) saturationValue.getWidth(), (int) saturationValue.getHeight(),
-                    (float) f);
+                    pickerOpacity.get());
             this.drawHueSlider(matrices,
                     (int) hue.x0, (int) hue.y0,
                     (int) hue.getWidth(), (int) hue.getHeight(),
-                    (float) f);
+                    pickerOpacity.get());
             if (this.hasAlpha) {
                 this.drawAlphaSlider(matrices,
                         (int) alpha.x0, (int) alpha.y0,
                         (int) alpha.getWidth(), (int) alpha.getHeight(),
-                        (float) f);
+                        pickerOpacity.get());
             }
             RenderSystem.shadeModel(7424);
             RenderSystem.disableBlend();
             RenderSystem.enableAlphaTest();
             RenderSystem.enableTexture();
-            RenderSystem.color4f(1f, 1f, 1f, 1f);
         }
         matrices.pop();
         RenderSystem.enableBlend();
@@ -115,20 +107,43 @@ public class FFMColorPickerWidget extends AbstractButtonWidget {
         FFMGraphicsHelper.StencilHelper stencilHelper = new FFMGraphicsHelper.StencilHelper(FFMGraphicsHelper.StencilHelper.RESET_OPENGL_STATE_ON_END);
 
         stencilHelper.beginStencil();
+        // cutout rounded rect same size of the one showing the color
         FFMGraphicsHelper.drawSmallRoundedRect(matrices, x, y, x + width, y + height, 1, 0xffffffff);
         stencilHelper.useStencil();
-
+        // draw checkerboard to have a background when color has alpha
         FFMGraphicsHelper.drawCheckerboardQuad(matrices, 5, x, y, width, height, 1, 0xff757575, 0xff262626);
         // inverse stencil
         RenderSystem.stencilFunc(GL11.GL_GREATER, 0xff, 0xff);
-        FFMGraphicsHelper.drawSmallRoundedRect(matrices, x - 1, y - 1, x + width + 1, y + height + 1, 0, borderColor);
+        // draw border
+        FFMGraphicsHelper.drawSmallRoundedRect(matrices, x - 1, y - 1, x + width + 1, y + height + 1, 0, borderColor.getInt());
 
         stencilHelper.endStencil();
         FFMGraphicsHelper.drawSmallRoundedRect(matrices, x, y, x + width, y + height, 1, this.getValue());
         this.wasHovered = this.isHovered();
-        this.wasOpen = this.open;
     }
 
+    public void open() {
+        this.open = true;
+        this.pickerShift.set(0f);
+        this.pickerOpacity.set(1f);
+    }
+
+    public void close() {
+        this.open = false;
+        this.pickerShift.set(50f);
+        this.pickerOpacity.set(0f);
+    }
+
+    public void toggle() {
+        if(this.open) {
+            this.close();
+        } else {
+            this.open();
+        }
+    }
+    // those methods define the sizes and position of the different slider
+    // they are defined like that because we need them both when rendering
+    // and dealing with mouse event, this removes the duplications
     private FFMUtils.BoundingBox getSVAreaBB() {
         return new FFMUtils.BoundingBox(
                 x - this.colorPickerWidth - 16 - (this.hasAlpha ? 16 : 0) - 10,
@@ -155,18 +170,21 @@ public class FFMColorPickerWidget extends AbstractButtonWidget {
                 y + (float) height / 2 + (float) this.colorPickerHeight / 2
         );
     }
-
+    // in those method f is opacity
     private void drawHueSlider(MatrixStack matrices, int x, int y, int w, int h, float f) {
         BufferBuilder bufferBuilder = Tessellator.getInstance().getBuffer();
-
+        // float height
         float fh = (float) h;
         float z = 0;
+        // x coord start
         float xs = (float)x;
+        // x coord end
         float xe = xs + w;
+
         bufferBuilder.begin(7, VertexFormats.POSITION_COLOR);
         // heeeere we go
         Matrix4f matrix = matrices.peek().getModel();
-
+        // I like it A L I G N E D
         // #f00 000% -> #ff0 017% (red  to yellow)
         bufferBuilder.vertex(matrix, xe, y + 0.00f * fh, z).color(1.0f, 0.0f, 0.0f, f).next();
         bufferBuilder.vertex(matrix, xs, y + 0.00f * fh, z).color(1.0f, 0.0f, 0.0f, f).next();
@@ -198,7 +216,8 @@ public class FFMColorPickerWidget extends AbstractButtonWidget {
         bufferBuilder.vertex(matrix, xs, y + 1.00f * fh, z).color(1.0f, 0.0f, 0.0f, f).next();
         bufferBuilder.vertex(matrix, xe, y + 1.00f * fh, z).color(1.0f, 0.0f, 0.0f, f).next();
 
-        float ha = this.value[0] / 360;
+        // draw thumb
+        float ha = this.value[0];
         bufferBuilder.vertex(matrix, xe, y + 1 + ha * (fh - 2) - 1, z).color(1f, 1f, 1f, f).next();
         bufferBuilder.vertex(matrix, xs, y + 1 + ha * (fh - 2) - 1, z).color(1f, 1f, 1f, f).next();
         bufferBuilder.vertex(matrix, xs, y + 1 + ha * (fh - 2) + 1, z).color(1f, 1f, 1f, f).next();
@@ -222,7 +241,10 @@ public class FFMColorPickerWidget extends AbstractButtonWidget {
 
         bufferBuilder.begin(7, VertexFormats.POSITION_COLOR);
         Matrix4f matrix = matrices.peek().getModel();
-
+        // this whole thing is draw by first:
+        // - filling a rect of the selected hue (100 saturation 100 value)
+        // - then drawing a white to transparent gradient from left to right over it (to make saturation)
+        // - then drawing a black to transparent gradient from bottom to top over it (to make value)
         bufferBuilder.vertex(matrix, x1, y0, z).color(color[0], color[1], color[2], (int) (f * 255)).next();
         bufferBuilder.vertex(matrix, x0, y0, z).color(color[0], color[1], color[2], (int) (f * 255)).next();
         bufferBuilder.vertex(matrix, x0, y1, z).color(color[0], color[1], color[2], (int) (f * 255)).next();
@@ -240,7 +262,7 @@ public class FFMColorPickerWidget extends AbstractButtonWidget {
 
         bufferBuilder.end();
         BufferRenderer.draw(bufferBuilder);
-
+        // draw cursor
         float s = this.value[1];
         float v = this.value[2];
         MinecraftClient.getInstance().getTextureManager().bindTexture(new Identifier("ffm", "circle.png"));
@@ -262,9 +284,10 @@ public class FFMColorPickerWidget extends AbstractButtonWidget {
     }
 
     private void drawAlphaSlider(MatrixStack matrices, int x, int y, int w, int h, float f) {
+        // checkerboard colors
         int[] cbc1 = new int[] {117, 117, 117, (int) (f * 255)};
         int[] cbc2 = new int[] {38, 38, 38, (int) (f * 255)};
-        System.out.printf("%x\n", ColorConverter.RGBAtoINT(cbc1));
+        // draw background
         FFMGraphicsHelper.drawCheckerboardQuad(matrices, 5, x, y, w, h, 0, ColorConverter.RGBAtoINT(cbc1), ColorConverter.RGBAtoINT(cbc2));
 
         BufferBuilder bufferBuilder = Tessellator.getInstance().getBuffer();
@@ -272,7 +295,7 @@ public class FFMColorPickerWidget extends AbstractButtonWidget {
         int[] color = ColorConverter.HSVtoRGB(this.value[0], this.value[1], this.value[2]);
         bufferBuilder.begin(7, VertexFormats.POSITION_COLOR);
         Matrix4f matrix = matrices.peek().getModel();
-
+        // draw gradient
         float fh = (float) h;
         float xs = (float) x;
         float xe = xs + w;
@@ -281,7 +304,7 @@ public class FFMColorPickerWidget extends AbstractButtonWidget {
         bufferBuilder.vertex(matrix, xs, y + 0, 0).color(color[0], color[1], color[2], (int) (f * 255)).next();
         bufferBuilder.vertex(matrix, xs, y + h, 0).color(color[0], color[1], color[2], 0).next();
         bufferBuilder.vertex(matrix, xe, y + h, 0).color(color[0], color[1], color[2], 0).next();
-
+        // draw thumb
         float ha = this.alpha;
         bufferBuilder.vertex(matrix, xe, y + 1 + (1 - ha) * (h - 2) - 1, z).color(1f, 1f, 1f, f).next();
         bufferBuilder.vertex(matrix, xs, y + 1 + (1 - ha) * (h - 2) - 1, z).color(1f, 1f, 1f, f).next();
@@ -297,7 +320,8 @@ public class FFMColorPickerWidget extends AbstractButtonWidget {
     @Override
     public void onClick(double mouseX, double mouseY) {
         super.onClick(mouseX, mouseY);
-        this.open = !this.open;
+        this.toggle();
+        // on click is only called when the mouse is clicked inside the color preview quad, not on the color picker
         this.lastMouseClickLocation = null;
     }
 
@@ -307,8 +331,9 @@ public class FFMColorPickerWidget extends AbstractButtonWidget {
         float[] p = hSliderBB.forcePointInside((float)mouseX, (float)mouseY);
         mouseX = p[0];
         mouseY = p[1];
-        float h = (float) ((mouseY - hSliderBB.y0) / this.colorPickerHeight * 360);
+        float h = (float) ((mouseY - hSliderBB.y0) / this.colorPickerHeight);
         this.value[0] = h;
+        this.onChange.accept(this, this.getValue());
     }
 
     private void updateSaturationValue(double mouseX, double mouseY) {
@@ -320,6 +345,7 @@ public class FFMColorPickerWidget extends AbstractButtonWidget {
         float v = (float) ((mouseY - svAreaBB.y0) / this.colorPickerHeight);
         this.value[1] = s;
         this.value[2] = 1 - v;
+        this.onChange.accept(this, this.getValue());
     }
 
     private void updateAlpha(double mouseX, double mouseY) {
@@ -328,6 +354,7 @@ public class FFMColorPickerWidget extends AbstractButtonWidget {
         mouseX = p[0];
         mouseY = p[1];
         this.alpha = 1 - (float) ((mouseY - aSliderBB.y0) / this.colorPickerHeight);
+        this.onChange.accept(this, this.getValue());
     }
 
     @Override
@@ -351,13 +378,13 @@ public class FFMColorPickerWidget extends AbstractButtonWidget {
     @Override
     public void mouseMoved(double mouseX, double mouseY) {
         super.mouseMoved(mouseX, mouseY);
-        System.out.println("test 2");
     }
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         boolean res = super.mouseClicked(mouseX, mouseY, button);
-    boolean clickedInBox = false;
+        boolean clickedInBox = false;
+
         if(button == 0 && open) {
             if(this.getSVAreaBB().isPointWithin((float) mouseX, (float) mouseY)) {
                 clickedInBox = true;
@@ -378,7 +405,13 @@ public class FFMColorPickerWidget extends AbstractButtonWidget {
             this.lastMouseClickLocation = null;
         }
         if(clickedInBox) {
+            // return true to have the click be considered "successful", and say that the click wasn't outside
+            // the widget, so that mouseDraw works.
             return true;
+        } else if(!res) {
+            // if !res then the click wasn't on the color preview quad, and if
+            // !clickedInBox then it wasn't on the color picker either, so we close
+            this.close();
         }
         return res;
     }
