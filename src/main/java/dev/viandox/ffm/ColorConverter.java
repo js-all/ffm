@@ -21,6 +21,8 @@
 
 package dev.viandox.ffm;
 
+import net.minecraft.util.math.MathHelper;
+
 /**
  * Convert between different color spaces supported.
  * RGB -> CMYK -> RGB
@@ -1055,11 +1057,11 @@ public class ColorConverter {
     }
 
     public static int[] lerpRGB(int[] rgb1, int[] rgb2, float f) {
-        float[] lch = lerpLCH(
-                RGBtoLCH(rgb1[0], rgb1[1], rgb1[2], CIE2_D65),
-                RGBtoLCH(rgb2[0], rgb2[1], rgb2[2], CIE2_D65),
+        float[] lch = lerpHSL(
+                RGBtoHSL(rgb1[0], rgb1[1], rgb1[2]),
+                RGBtoHSL(rgb2[0], rgb2[1], rgb2[2]),
                 f);
-        return LCHtoRGB(lch[0], lch[1], lch[2], CIE2_D65);
+        return HSLtoRGB(lch[0], lch[1], lch[2]);
     }
 
     public static int[] lerpRGBA(int[] rgba1, int[] rgba2, float f) {
@@ -1071,22 +1073,11 @@ public class ColorConverter {
         return RGBtoRGBA(rgb, (int) (rgba1[3] + f * (rgba2[3] - rgba1[3])));
     }
 
-    public static float[] lerpLCH(float[] lch1, float[] lch2, float f) {
-        float h1 = lch1[2];
-        float h2 = lch2[2];
-        float dh;
-
-        if (h2 > h1 && h2 - h1 > 180) {
-            dh = h2 - (h1 + 360);
-        } else if (h2 < h1 && h1 - h2 > 180) {
-            dh = h2 + 360 - h1;
-        } else {
-            dh = h2 - h1;
-        }
-        float h = h1 + f * dh;
-        float c = lch1[1] + f * (lch2[1] - lch1[1]);
-        float l = lch1[0] + f * (lch2[0] - lch1[0]);
-        return new float[] {l, c, h};
+    public static float[] lerpHSL(float[] hsl1, float[] hsl2, float f) {
+        float h = MathHelper.lerpAngleDegrees(f, hsl1[0], hsl2[0]);;
+        float s = hsl1[1] + f * (hsl2[1] - hsl1[1]);
+        float l = hsl1[2] + f * (hsl2[2] - hsl1[2]);
+        return new float[] {h, s, l};
     }
 
     public static int[] INTtoRGB(int color) {

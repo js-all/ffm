@@ -9,8 +9,9 @@ public class FFMBooleanOption extends FFMOption<Boolean> {
     private Text label;
     private final boolean includeLabel;
 
-    public FFMBooleanOption(String key, Text label, boolean includeLabel) {
+    public FFMBooleanOption(String key, boolean value, Text label, boolean includeLabel) {
         super(key, label);
+        this.value = value;
         this.includeLabel = includeLabel;
     }
     @Override
@@ -25,7 +26,7 @@ public class FFMBooleanOption extends FFMOption<Boolean> {
 
     @Override
     public void deserialize(JsonObject config) {
-        this.value = config.get(key).getAsBoolean();
+        if(config.has(key)) this.value = config.get(key).getAsBoolean();
     }
     @Override
     public Text getLabel() {

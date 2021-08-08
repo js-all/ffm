@@ -69,7 +69,7 @@ public abstract class MixinInGameHud {
     )
     // redirect the get armor call to return 0 and hide the armor bar if needed
     public int redirectGetArmor(PlayerEntity player) {
-        if(Config.hideArmorBar) return 0;
+        if(Config.hideArmorBar.get()) return 0;
         return player.getArmor();
     }
 
@@ -91,7 +91,7 @@ public abstract class MixinInGameHud {
             float statusHeight = 9.5f;
             float playerAir = plyr.getAir();
             float leftColumnBasis =  (float) (this.scaledHeight - 28 - (Math.ceil(plyr.getMaxHealth() / 20) + Math.ceil(plyr.getAbsorptionAmount() / 20) + (playerAir < 300 ? 1 : 0)) * statusHeight);
-            float rightColumnBasis = (float) (this.scaledHeight - 30 - (1 + (Config.hideArmorBar ? 0 : 1)) * statusHeight);
+            float rightColumnBasis = (float) (this.scaledHeight - 30 - (1 + (Config.hideArmorBar.get() ? 0 : 1)) * statusHeight);
             // health
             Text txt = Text.of(ActionBarScrapper.health + "/" + ActionBarScrapper.maxHealth);
             FFMGraphicsHelper.drawOutlinedText(textRenderer,

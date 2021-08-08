@@ -7,13 +7,14 @@ import net.minecraft.text.Text;
 import java.util.List;
 
 public class FFMCyclingOption<T> extends FFMOption<Integer> {
-    private List<T> variants;
+    private final List<T> variants;
     private final boolean includeLabel;
 
     public FFMCyclingOption(String key, Text label, List<T> variants, boolean includeLabel) {
         super(key, label);
         this.variants = variants;
         this.includeLabel = includeLabel;
+        this.value = 0;
     }
 
     @Override
@@ -41,7 +42,7 @@ public class FFMCyclingOption<T> extends FFMOption<Integer> {
 
     @Override
     public void deserialize(JsonObject config) {
-        value = config.get(key).getAsInt();
+        if(config.has(key)) value = config.get(key).getAsInt();
     }
 
     @Override

@@ -13,7 +13,7 @@ import java.time.Instant;
 
 public class FFMButtonWidget extends ButtonWidget {
     private boolean wasHovered = false;
-    private final InterpolableColor backgroundColor = InterpolableColor.easeInOut(Config.accentColor);
+    private final InterpolableColor backgroundColor = InterpolableColor.easeInOut(Config.accentColor.get());
 
     public FFMButtonWidget(int x, int y, int width, int height, Text message, PressAction onPress) {
         super(x, y, width, height, message, onPress);
@@ -26,8 +26,8 @@ public class FFMButtonWidget extends ButtonWidget {
     @Override
     public void renderButton(MatrixStack matrices, int mouseX, int mouseY, float delta) {
         if(wasHovered != this.isHovered()) {
-            if(this.isHovered()) this.backgroundColor.set(Config.accentColorBright);
-            else this.backgroundColor.set(Config.accentColor);
+            if(this.isHovered()) this.backgroundColor.set(Config.accentColorBright.get());
+            else this.backgroundColor.set(Config.accentColor.get());
         }
 
         FFMGraphicsHelper.drawRoundedRect(matrices, x, y, x + width, y+ height, 0, backgroundColor.getInt(), 9);

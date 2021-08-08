@@ -13,7 +13,6 @@ import dev.viandox.ffm.IGetTextHandler;
 
 @Mixin(TextRenderer.class)
 public class MixinTextRenderer implements IGetTextHandler {
-	private static Boolean shadow = Config.TextShadow;
 
 	@Shadow
 	TextHandler handler;
@@ -24,7 +23,7 @@ public class MixinTextRenderer implements IGetTextHandler {
 		ordinal = 0
 	)
 	private boolean setTextShadow(boolean s) { 
-		return shadow == null ? s : shadow;
+		return Config.TextShadow.getConcrete().equals("default") ? s : Config.TextShadow.getConcrete().equals("always");
 	}
 	@ModifyVariable(
 		method = "drawInternal(Lnet/minecraft/text/OrderedText;FFIZLnet/minecraft/util/math/Matrix4f;Lnet/minecraft/client/render/VertexConsumerProvider;ZII)I",
@@ -32,7 +31,7 @@ public class MixinTextRenderer implements IGetTextHandler {
 		ordinal = 0
 	)
 	private boolean setOrderedTextShadow(boolean s) {
-		return shadow == null ? s : shadow;
+		return Config.TextShadow.getConcrete().equals("default") ? s : Config.TextShadow.getConcrete().equals("always");
 	}
 	@Override
 	public TextHandler getTextHandler() {

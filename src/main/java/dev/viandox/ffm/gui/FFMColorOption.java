@@ -7,14 +7,19 @@ import net.minecraft.text.Text;
 
 public class FFMColorOption extends FFMOption<Integer>{
     private final boolean alpha;
-    public FFMColorOption(String key, Text label, boolean alpha) {
+    public FFMColorOption(String key, int color, Text label, boolean alpha) {
         super(key, label);
+        this.value = color;
         this.alpha = alpha;
     }
 
     @Override
     public Integer get() {
         return value;
+    }
+
+    public int[] getArray() {
+        return ColorConverter.INTtoRGBA(value);
     }
 
     @Override
@@ -31,8 +36,10 @@ public class FFMColorOption extends FFMOption<Integer>{
 
     @Override
     public void deserialize(JsonObject config) {
+        // skip if the key isn't here, as the default value is prefered in that case
+        if(!config.has(key)) return;
         String v = config.get(key).getAsString();
-        String[] tokens = v.replaceAll("^\\((.+)\\)$", "$1").split(",\\s*");
+        String[] tokens = v.replaceAll("^rgba\\((.+)\\)$", "$1").split(",\\s*");
         int r = Integer.parseInt(tokens[0]);
         int g = Integer.parseInt(tokens[1]);
         int b = Integer.parseInt(tokens[2]);

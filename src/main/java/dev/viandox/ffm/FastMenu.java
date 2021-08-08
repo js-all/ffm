@@ -2,6 +2,8 @@ package dev.viandox.ffm;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import dev.viandox.ffm.config.Config;
+import dev.viandox.ffm.interpolation.InterpolableColor;
+import dev.viandox.ffm.interpolation.InterpolableFloat;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawableHelper;
@@ -15,13 +17,13 @@ import net.minecraft.util.Identifier;
 import net.minecraft.util.math.Matrix4f;
 import org.lwjgl.opengl.GL11;
 
+import java.util.HashMap;
 import java.util.Map;
 
 public class FastMenu extends DrawableHelper {
     private static boolean open;
     private static MinecraftClient client;
     private static int innerCircleSize = 100;
-
     public static Map<String, String> getItems() {
         return Config.fastMenuEntries;
     }

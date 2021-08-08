@@ -19,7 +19,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(HandledScreen.class)
 public class MixinHandledScreen {
     private static int maxStep = 100;
-    private static float stepSize = Config.ToolTipLerpStepSize;
+    private static float stepSize = (float) Config.ToolTipLerpStepSize.getRange();
     private static float maxSquaredDistance = (float) Math.pow(Config.ToolTipMaxLerpDistance, 2);
     protected float steps = 0;
     protected Vector3f oldState;

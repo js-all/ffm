@@ -8,6 +8,7 @@ import dev.viandox.ffm.interpolation.InterpolableColor;
 import dev.viandox.ffm.interpolation.InterpolableDouble;
 import dev.viandox.ffm.interpolation.InterpolableFloat;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.widget.SliderWidget;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.BufferRenderer;
@@ -17,27 +18,46 @@ import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.Matrix4f;
+import net.minecraft.util.math.Vec2f;
+import org.lwjgl.opengl.GL11;
 
+import java.time.Duration;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.time.temporal.Temporal;
+import java.time.temporal.TemporalAmount;
+import java.time.temporal.TemporalUnit;
 import java.util.function.BiConsumer;
 
 public class FFMSliderWidget extends SliderWidget {
-    private BiConsumer<FFMSliderWidget, Double> onChange;
-    private InterpolableDouble iValue;
+    private final BiConsumer<FFMSliderWidget, Double> onChange;
+    private final InterpolableDouble iValue;
     private boolean wasHovered = false;
-    private InterpolableFloat thumbSize = InterpolableFloat.easeInOut(2f);
+    private final InterpolableFloat thumbSize = InterpolableFloat.easeInOut(2f);
+    private final InterpolableFloat toolTipOpacity = InterpolableFloat.easeInOut(0f);
+    private final InterpolableColor toolTipTextColor = InterpolableColor.easeInOut(0x00ffffff);
+    private boolean isActive = false;
 
     public FFMSliderWidget(int x, int y, int width, int height, Text text, double value, BiConsumer<FFMSliderWidget, Double> onChange) {
         super(x, y, width, height, text, value);
         this.iValue = InterpolableDouble.easeInOut(value);
         this.onChange = onChange;
-        this.updateMessage();
+        this.applyValue();
     }
 
     @Override
     public void renderButton(MatrixStack matrices, int mouseX, int mouseY, float delta) {
         if(this.isHovered() != this.wasHovered) {
-          if(this.isHovered()) this.thumbSize.set(3f);
-          else this.thumbSize.set(2f);
+          if(this.isHovered()) {
+              this.thumbSize.set(3f);
+              this.toolTipOpacity.set(0.7f);
+              this.toolTipTextColor.set(0xffffffff);
+          }
+          else {
+              this.thumbSize.set(2f);
+              this.toolTipOpacity.set(0f);
+              this.toolTipTextColor.set(0x00ffffff);
+          }
         }
 
         MinecraftClient client = MinecraftClient.getInstance();
@@ -75,7 +95,7 @@ public class FFMSliderWidget extends SliderWidget {
         BufferRenderer.draw(bufferBuilder);
 
         stencilHelper.useStencil();
-        int[] c = ColorConverter.INTtoRGBA(Config.accentColor);
+        int[] c = Config.accentColor.getArray();
         int[] coff = ColorConverter.INTtoRGBA(0xffdddddd);
         bufferBuilder.begin(7, VertexFormats.POSITION_COLOR_TEXTURE);
 
@@ -107,12 +127,49 @@ public class FFMSliderWidget extends SliderWidget {
         RenderSystem.enableTexture();
         BufferRenderer.draw(bufferBuilder);
 
+        TextRenderer textRenderer = client.textRenderer;
+        float tw = (float) textRenderer.getWidth(this.getMessage()) / 2;
+        float th = 7;
+        float p = 5;
+
+        FFMGraphicsHelper.drawSmallRoundedRect(matrices,
+                x + w * (float)v - tw - p,
+                y - th - textRenderer.fontHeight - p - p,
+                x + w * (float) v + tw + p,
+                y - th,
+                0,
+                (int)(toolTipOpacity.get() * 255),
+                0, 0, 0
+        );
+        client.getTextureManager().bindTexture(new Identifier("ffm", "pixel.png"));
+        bufferBuilder.begin(GL11.GL_TRIANGLES, VertexFormats.POSITION_COLOR);
+
+        bufferBuilder.vertex(matrix, x + w * (float)v + 4, y - th, 0).color(0, 0, 0, toolTipOpacity.get()).next();
+        bufferBuilder.vertex(matrix, x + w * (float)v - 4, y - th, 0).color(0, 0, 0, toolTipOpacity.get()).next();
+        bufferBuilder.vertex(matrix, x + w * (float)v, y - th + 3, 0).color(0, 0, 0, toolTipOpacity.get()).next();
+
+        bufferBuilder.end();
+        RenderSystem.enableBlend();
+        RenderSystem.disableTexture();
+        BufferRenderer.draw(bufferBuilder);
+        RenderSystem.enableTexture();
+
+        // textRenderer interpret 0xAARRGGBB colors with 0 alpha as 0x00RRGGBB so this stops it from rendering the text when alpha is 0
+        if(toolTipTextColor.get()[3] > 8) {
+            drawCenteredText(matrices, textRenderer, this.getMessage(), (int)(x + w * v), (int)(y - th - p - textRenderer.fontHeight), toolTipTextColor.getInt());
+        }
+
         wasHovered = this.isHovered();
     }
 
     @Override
+    public boolean isHovered() {
+        return super.isHovered() || this.isActive;
+    }
+
+    @Override
     protected void updateMessage() {
-        this.setMessage(Text.of(""));
+
     }
 
     @Override
@@ -130,5 +187,17 @@ public class FFMSliderWidget extends SliderWidget {
     public void onClick(double mouseX, double mouseY) {
         super.onClick(mouseX, mouseY);
         iValue.set(value);
+        isActive = true;
+    }
+
+    @Override
+    public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        isActive = false;
+        return super.mouseReleased(mouseX, mouseY, button);
+    }
+
+    @Override
+    public boolean isMouseOver(double mouseX, double mouseY) {
+        return super.isMouseOver(mouseX, mouseY) || isActive;
     }
 }

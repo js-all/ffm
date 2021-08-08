@@ -69,21 +69,21 @@ public class MixinScreen {
 
         // if the color is solid white (either because of the text, or because of an error, default to the config)
         if((color & 0x00ffffff) == 0x00ffffff) {
-            color = Config.ToolTipDefaultColor;
+            color = Config.ToolTipDefaultColor.get();
         }
         // get the alpha, will be used in the background color
-        int alp = (int)(Config.ToolTipBodyOpacity * 255);
+        int alp = Config.ToolTipBodyColor.getArray()[3];
         
         // c[rgba] each component of the header color
         int cr = ((color >> 16) & 0xff);
         int cg = ((color >>  8) & 0xff);
-        int cb = ((color >>  0) & 0xff);
+        int cb = ((color) & 0xff);
         int ca = 255;
 
-        if (Config.ColorCorrectToolTip) {
+        if (Config.ColorCorrectToolTip.get()) {
             // limit the lightness to a level, to avoid unreadable tooltips
             float[] lch = ColorConverter.RGBtoLCH(cr, cg, cb, ColorConverter.CIE2_D65);
-            lch[0] += (Config.ColorCorrectToolTipLightness - lch[0]) / 4;
+            lch[0] += (Config.ColorCorrectToolTipLightness.getRange() - lch[0]) / 4;
             lch[1] += 20;
             int[] rgb = ColorConverter.clampRGB(ColorConverter.LCHtoRGB(lch[0], lch[1], lch[2], ColorConverter.CIE2_D65));
 
@@ -92,12 +92,10 @@ public class MixinScreen {
             cb = Math.abs(rgb[2]);
         }
 
-        // the background greyscale color
-        int BG = (int) (0.0588f * 255);
         // b[rgba] each component of the background color
-        int br = BG;
-        int bg = BG;
-        int bb = BG;
+        int br = Config.ToolTipBodyColor.getArray()[0];
+        int bg = Config.ToolTipBodyColor.getArray()[1];
+        int bb = Config.ToolTipBodyColor.getArray()[2];
         int ba = alp;
 
         // a sort of offset that shrinks the tooltip by an amount, used in single line tooltip
@@ -113,7 +111,7 @@ public class MixinScreen {
         // change some value if the tooltip is single lined
         if(lines.size() == 1) {
             // change the colors, to either only background color or only header color
-            if(Config.invertedSingleLineToolTip) {
+            if(Config.invertedSingleLineToolTip.get()) {
                 cr = br;
                 cg = bg;
                 cb = bb;
@@ -235,7 +233,7 @@ public class MixinScreen {
     List<? extends OrderedText> updateFirstMemberOfLines(List<? extends OrderedText> list) {
         List<OrderedText> lines = new ArrayList<>(list);
         // if we only have one line, and invertedSingleLineToolTip is true, ignore
-        if(lines.size() == 1 && Config.invertedSingleLineToolTip) {
+        if(lines.size() == 1 && Config.invertedSingleLineToolTip.get()) {
             toolTipHeaderColor = 0xffffffff;
             return list;
         }

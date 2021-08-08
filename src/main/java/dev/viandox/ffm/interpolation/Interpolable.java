@@ -28,9 +28,14 @@ public abstract class Interpolable<T> {
     }
 
     public void set(T value) {
+        if(this.value == value) return;
         this.oldValue = this.get();
         this.value = value;
         this.lastChange = Instant.now();
+    }
+
+    public T getGoal() {
+        return value;
     }
 
     public void setWithoutInterpolation(T value) {
@@ -46,6 +51,8 @@ public abstract class Interpolable<T> {
     }
 
     public T get() {
-        return this.lerp(timingFunction.apply(this.getInterpolationProgress()));
+        double progress = this.getInterpolationProgress();
+        if(getInterpolationProgress() >= 1) return this.value;
+        return this.lerp(timingFunction.apply(progress));
     }
 }
